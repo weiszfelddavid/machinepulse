@@ -1,0 +1,12 @@
+{
+    "indentation": {
+        "spaces": 4
+    },
+    "lineLength": 120,
+    "respectsExistingLineBreaks": true,
+    "rules": {
+        "NoEmptyLinesOpeningClosingBraces": true,
+        "UseLetInEveryBoundCaseVariable": false
+    },
+    "version": 1
+}

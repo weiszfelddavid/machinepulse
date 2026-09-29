@@ -1,0 +1,79 @@
+name: MachinePulse
+
+options:
+  bundleIdPrefix: com.davidweiszfeld
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "15.0"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_HARDENED_RUNTIME: YES
+    ENABLE_APP_SANDBOX: NO
+
+packages:
+  SwiftTesting:
+    url: https://github.com/swiftlang/swift-testing.git
+    revision: c9d57c83568b06da229ed24339a6228e8e3b438b
+
+targets:
+  MachinePulseCore:
+    type: framework
+    platform: macOS
+    sources:
+      - Sources/MachinePulseCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.davidweiszfeld.MachinePulseCore
+    dependencies:
+      - sdk: libsqlite3.tbd
+
+  MachinePulse:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/MachinePulseApp
+    resources:
+      - Sources/MachinePulseApp/Resources
+    info:
+      path: Config/MachinePulse-Info.plist
+      properties:
+        CFBundleDisplayName: MachinePulse
+        CFBundleName: MachinePulse
+        CFBundleShortVersionString: 0.5.16
+        CFBundleVersion: "38"
+        LSUIElement: true
+        NSHumanReadableCopyright: Copyright © 2026 David Weiszfeld
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.davidweiszfeld.MachinePulse
+        PRODUCT_NAME: MachinePulse
+    dependencies:
+      - target: MachinePulseCore
+
+  MachinePulseCoreTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests/MachinePulseCoreTests
+    dependencies:
+      - target: MachinePulseCore
+      - package: SwiftTesting
+        product: Testing
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.davidweiszfeld.MachinePulseCoreTests
+
+schemes:
+  MachinePulse:
+    build:
+      targets:
+        MachinePulse: all
+        MachinePulseCoreTests: [test]
+    test:
+      targets:
+        - MachinePulseCoreTests

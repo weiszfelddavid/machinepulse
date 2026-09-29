@@ -1,0 +1,30 @@
+name: Feature request
+description: Propose a focused improvement to MachinePulse.
+title: "Feature: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Describe the practical problem before proposing an interface or implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: What should become easier, safer, or clearer?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and alternatives
+      description: Note alternatives considered and whether this concerns local monitoring, remote read-only monitoring, local servers, or display controls.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: This request does not include credentials, private keys, diagnostics, or private infrastructure details.
+          required: true

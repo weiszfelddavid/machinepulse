@@ -1,0 +1,58 @@
+name: Bug report
+description: Report reproducible incorrect behavior in MachinePulse.
+title: "Bug: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve MachinePulse. Never include credentials, private keys, or unreviewed device and tailnet identifiers. Use private vulnerability reporting for security problems.
+  - type: input
+    id: version
+    attributes:
+      label: MachinePulse version and build
+      description: Find these in the installed app's Info.plist or include the source commit used to build it.
+      placeholder: 0.5.16 (38)
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: macOS 15.7.3
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: State what you saw and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Open MachinePulse…
+        2. Expand…
+        3. Observe…
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Relevant setup
+      description: Include the device platform, Presence or Full metrics mode, and visible MachinePulse explanation when applicable.
+  - type: textarea
+    id: diagnostic
+    attributes:
+      label: Redacted diagnostic (optional)
+      description: Review and redact device names, addresses, DNS names, process or service names, and any other private operational context before pasting.
+      render: shell
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I reviewed this report and removed credentials, private keys, exploit details, and unwanted infrastructure identifiers.
+          required: true

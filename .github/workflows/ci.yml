@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Pull requests run here, so the token can read and nothing more.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Build, lint, and test
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+
+      # Swift 6.2 ships with Xcode 26; an image without it must fail here,
+      # not later with a confusing compiler error.
+      - name: Select Xcode 26
+        run: |
+          xcode=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          test -n "$xcode" && sudo xcode-select -s "$xcode"
+          swift --version
+
+      - name: Build with warnings as errors
+        run: swift build -Xswiftc -warnings-as-errors
+
+      - name: Format
+        run: xcrun swift-format lint --strict --recursive Sources Tests
+
+      - name: Collector syntax
+        run: sh -n Sources/MachinePulseApp/Resources/collector.sh
+
+      # The generated project is committed; a stale one is a change made by
+      # mistake.
+      - name: Xcode project drift
+        run: |
+          brew install xcodegen
+          xcodegen generate
+          git diff --exit-code MachinePulse.xcodeproj/project.pbxproj
+
+      # verify.sh needs a live Tailscale; the deterministic suite does not.
+      - name: Test
+        run: swift test

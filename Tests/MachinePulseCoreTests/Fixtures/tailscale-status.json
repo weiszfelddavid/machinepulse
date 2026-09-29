@@ -1,0 +1,60 @@
+{
+  "BackendState": "Running",
+  "Self": {
+    "ID": "local-id",
+    "HostName": "Example Mac",
+    "DNSName": "example-mac.example.ts.net.",
+    "TailscaleIPs": ["100.64.0.1"],
+    "OS": "macOS",
+    "Online": true,
+    "Active": true,
+    "RxBytes": 1000,
+    "TxBytes": 2000
+  },
+  "Peer": {
+    "peer-key": {
+      "ID": "vps-id",
+      "HostName": "example-vps",
+      "DNSName": "example-vps.example.ts.net.",
+      "TailscaleIPs": ["100.64.0.10"],
+      "OS": "linux",
+      "Online": true,
+      "Active": true,
+      "CurAddr": "203.0.113.8:41641",
+      "Relay": "iad",
+      "LastSeen": "2026-08-07T12:34:56.123456789Z",
+      "RxBytes": 3000,
+      "TxBytes": 4000
+    },
+    "relay-key": {
+      "ID": "nas-id",
+      "HostName": "nas",
+      "DNSName": "nas.example.ts.net.",
+      "TailscaleIPs": ["100.64.0.20"],
+      "OS": "linux",
+      "Online": true,
+      "Active": true,
+      "CurAddr": "",
+      "Relay": "fra",
+      "LastSeen": "0001-01-01T00:00:00Z"
+    },
+    "idle-key": {
+      "ID": "phone-id",
+      "HostName": "Pixel",
+      "TailscaleIPs": ["100.64.0.30"],
+      "OS": "android",
+      "Online": true,
+      "Active": false
+    },
+    "offline-key": {
+      "ID": "laptop-id",
+      "HostName": "old-laptop",
+      "DNSName": "old-laptop.example.ts.net.",
+      "TailscaleIPs": ["100.64.0.40"],
+      "OS": "windows",
+      "Online": false,
+      "Active": false,
+      "LastSeen": "2026-08-01T08:00:00.500000000Z"
+    }
+  }
+}

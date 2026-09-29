@@ -1,0 +1,37 @@
+{
+  "timestamp": 1786106096.5,
+  "hostname": "example-vps",
+  "uptimeSeconds": 86400,
+  "cpuPercent": 47.5,
+  "logicalCPUCount": 3,
+  "loadAverage1": 1.2,
+  "loadAverage5": 1.1,
+  "loadAverage15": 1.0,
+  "memoryTotalBytes": 4000000000,
+  "memoryAvailableBytes": 2500000000,
+  "swapTotalBytes": 2000000000,
+  "swapUsedBytes": 1100000000,
+  "diskTotalBytes": 80000000000,
+  "diskUsedBytes": 50000000000,
+  "diskReadBytesTotal": 1000000,
+  "diskWriteBytesTotal": 2000000,
+  "networkReceiveBytesTotal": 3000000,
+  "networkTransmitBytesTotal": 4000000,
+  "cpuPressure": { "someAverage10": 1.0, "fullAverage10": 0.0 },
+  "memoryPressure": { "someAverage10": 0.0, "fullAverage10": 0.0 },
+  "ioPressure": { "someAverage10": 9.9, "fullAverage10": 9.7 },
+  "topCPUProcesses": [
+    { "name": "php", "cpuPercent": 85.0, "residentBytes": 80000000 }
+  ],
+  "topMemoryProcesses": [],
+  "failedServices": [
+    {
+      "name": "nginx.service",
+      "failedAt": 1786106000,
+      "isEnabled": true
+    }
+  ],
+  "oomKillCount": 4,
+  "lastOOMKillAt": 1786106000,
+  "bootID": "boot-one"
+}
