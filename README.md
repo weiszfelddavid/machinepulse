@@ -1,6 +1,6 @@
 # MachinePulse
 
-![The MachinePulse popover showing the Storage section of a machine](assets/screenshot.png)
+![The MachinePulse popover: the Overview of a machine](assets/overview.png)
 
 A macOS menu-bar monitor for the machines on your tailnet. It leads with the incident that needs attention, keeps the evidence behind short-lived problems, and never touches a remote machine.
 
@@ -32,6 +32,11 @@ The panel has five projections of the same machine cards:
 - **Displays** — optional XDR Boost for this Mac's compatible displays, off by default.
 - **Workloads** — project servers listening on this Mac; systemd services, listeners, and cgroup limits on a Linux machine.
 - **Storage** — press **Scan** and a treemap shows where the disk space went, with reclaimable space hatched and a **Worth a look** list.
+
+<p>
+<img src="assets/vitals.png" width="49%" alt="The Vitals section: current readings, a 15-minute chart, and capacity history">
+<img src="assets/storage.png" width="49%" alt="The Storage section: how full the disk is, a treemap of the home directory, and the Worth a look list">
+</p>
 
 A warning needs two matching samples; a critical reading shows at once. Recovery waits for clear samples, and Linux pressure waits through a two-minute quiet window so a brief recurrence stays one incident. **Unreachable** means Tailscale reports the machine offline; a collection problem on an online machine is a separate warning that keeps the last good sample on screen. Phones and tablets that go offline stay quiet.
 
