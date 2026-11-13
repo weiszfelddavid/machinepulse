@@ -33,6 +33,7 @@ public struct CollectorSnapshot: Codable, Sendable {
     public let expectedUnits: [ExpectedUnitMetric]?
     public let remoteWorkloads: [RemoteWorkloadMetric]?
     public let workloadResourceControls: [WorkloadResourceControlMetric]?
+    public let agentSessions: [AgentSessionMetric]?
     public let oomKillCount: Int
     public let lastOOMKillAt: Date?
     public let oomCollectionStatus: OOMCollectionStatus?

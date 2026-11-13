@@ -37,6 +37,14 @@ The Linux sample reads one `ps` table for both process leaders and cgroup candid
 
 Remote workloads come from at most 128 listening TCP rows grouped by stable `.service` identity or bounded process evidence, merged with watched services, capped at 16 records with four listeners each. Resource controls resolve at most 16 cgroup paths from watched or listening services plus current top contributors, read only the named `memory.*`, `cpu.*`, `io.*`, and `pids.*` files below `/sys/fs/cgroup`, each capped at 8 KiB, and keep configured, unlimited, unsupported, and unavailable distinct.
 
+## Agent sessions
+
+The `machinepulse-agents` plugin in `plugins/` is one hook script for Claude Code and Codex, which share the plugin and hook format. The hook finds the agent among its process ancestors and writes `~/.local/state/machinepulse/agents/<agent>-<pid>.json`: the state (`idle`, `working`, `approval`, `waiting`), when it changed, when the turn started, and how to find the terminal. Claude Code reports idle a minute after any turn, so idle only ends a turn that had no Stop; Codex reports an interrupt the same way.
+
+The collector reads these files on Linux and macOS, and `AgentSessionReader` reads them natively on this Mac, with the same rules: version 1 only, a known agent and state, the process ID still running as that agent, 4 KiB per file, 16 sessions. A session in `approval` whose transcript changed after the request is working again; only the modification time is read. A collection returns a `MetricCollection`: the sample, and the sessions, which are never stored and never reach health.
+
+`AgentAttentionTracker` is pure. It announces each finished turn of 30 seconds or more once and each approval request once, and the first collection of a machine only sets the baseline. `TerminalFocus` in the app walks from the process to the first regular app, which is the terminal. For Terminal and iTerm2 it selects the tab with the session's terminal device through Apple Events. For a remote session, the process is the local `ssh` client whose source port matches the port in the session's `SSH_CONNECTION`.
+
 ## Health
 
 `HealthEvaluator` is a pure function from a sample, its predecessor, and thresholds to a report. Mac memory health follows the pressure level and active swap; Linux memory health combines utilization and pressure; Linux `some` and `full` pressure are classified separately. `WorkloadHealthEvaluator` judges cgroup consequences from adjacent-sample deltas and refuses a delta across a reboot, identity change, reset, missing value, or a gap over 60 seconds. It suppresses a workload I/O finding that a host finding already represents, and the host evaluator suppresses a journal OOM that a cgroup counter already reported.

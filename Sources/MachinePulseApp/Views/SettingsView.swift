@@ -19,6 +19,16 @@ struct SettingsView: View {
         .padding(16)
     }
 
+    static let claudeInstallCommand = """
+        claude plugin marketplace add weiszfelddavid/machinepulse
+        claude plugin install machinepulse-agents@machinepulse
+        """
+
+    static let codexInstallCommand = """
+        codex plugin marketplace add weiszfelddavid/machinepulse
+        codex plugin add machinepulse-agents@machinepulse
+        """
+
     private var general: some View {
         Form {
             Section("Behavior") {
@@ -37,8 +47,30 @@ struct SettingsView: View {
                         get: { model.notificationsEnabled },
                         set: { model.setNotificationsEnabled($0) }
                     ))
+                Toggle(
+                    "Notify me when an agent finishes or needs approval",
+                    isOn: Binding(
+                        get: { model.agentNotificationsEnabled },
+                        set: { model.setAgentNotificationsEnabled($0) }
+                    ))
                 LabeledContent("Refresh interval", value: "10 seconds")
                 LabeledContent("Failure retry backoff", value: "Up to 60 seconds")
+            }
+            Section("Agents") {
+                Text(
+                    "Install the machinepulse-agents plugin on each machine where Claude Code or Codex runs. Its sessions then show in Workloads, and a click on a notification opens the session’s terminal."
+                )
+                .foregroundStyle(.secondary)
+                LabeledContent("Claude Code") {
+                    Text(Self.claudeInstallCommand)
+                        .font(.caption.monospaced())
+                        .textSelection(.enabled)
+                }
+                LabeledContent("Codex") {
+                    Text(Self.codexInstallCommand)
+                        .font(.caption.monospaced())
+                        .textSelection(.enabled)
+                }
             }
             Section("History") {
                 LabeledContent("Detailed metrics", value: "\(MetricsStore.sampleRetentionDays) days")

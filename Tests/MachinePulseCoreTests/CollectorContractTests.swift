@@ -700,6 +700,10 @@ struct CollectorContractTests {
 
     // MARK: - Harness
 
+    private struct AgentSessionsDriverOutput: Decodable {
+        let sessions: [AgentSessionMetric]
+    }
+
     private struct CollectorProcessOutput: Decodable {
         let topCPUProcesses: [ProcessMetric]
         let topMemoryProcesses: [ProcessMetric]
@@ -743,6 +747,61 @@ struct CollectorContractTests {
         let name: String
         let systemdUnit: String?
         let cgroupPath: String?
+    }
+
+    @Test func readsAgentSessionsWithTheSameRulesAsThisMac() async throws {
+        let table: [[String: Any]] = [
+            ["pid": 101, "name": "claude"], ["pid": 102, "name": "codex"], ["pid": 103, "name": "python3"],
+            ["pid": 105, "name": "node"], ["pid": 301, "name": "claude"], ["pid": 302, "name": "claude"],
+        ]
+        let names = Dictionary(
+            uniqueKeysWithValues: table.map { (Int32($0["pid"] as! Int), $0["name"] as! String) })
+        nonisolated(unsafe) var swiftSessions: [AgentSessionMetric] = []
+        let output: AgentSessionsDriverOutput = try await runCollectorMode(
+            "agent-sessions",
+            environment: ["MACHINEPULSE_FAKE_PROCESS_TABLE": try jsonString(table)],
+            prepare: { workspace in
+                let agents = workspace.appendingPathComponent("agents", isDirectory: true)
+                let transcripts = workspace.appendingPathComponent("transcripts", isDirectory: true)
+                for directory in [agents, transcripts] {
+                    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                }
+                var records = [
+                    record(agent: "claude", pid: 101, state: "working", since: 1_000),
+                    record(agent: "codex", pid: 102, state: "waiting", since: 2_000, turnStartedAt: 1_900),
+                    record(agent: "claude", pid: 103, state: "idle", since: 3_000),
+                    record(agent: "claude", pid: 104, state: "idle", since: 4_000),
+                    record(agent: "claude", pid: 105, state: "idle", since: 5_000),
+                    record(agent: "claude", pid: 301, state: "approval", since: 1_000),
+                    record(agent: "claude", pid: 302, state: "approval", since: 1_000),
+                ]
+                for (index, offset) in [(5, 10.0), (6, 1.0)] {
+                    let transcript = transcripts.appendingPathComponent("\(index).jsonl")
+                    try Data().write(to: transcript)
+                    try FileManager.default.setAttributes(
+                        [.modificationDate: Date(timeIntervalSince1970: 1_000 + offset)],
+                        ofItemAtPath: transcript.path
+                    )
+                    records[index]["transcript"] = transcript.path
+                }
+                var future = record(agent: "claude", pid: 101, state: "working", since: 9_000)
+                future["version"] = 2
+                for (name, value) in records.map({ ("\($0["agent"]!)-\($0["pid"]!).json", $0) })
+                    + [("claude-999.json", future)]
+                {
+                    try JSONSerialization.data(withJSONObject: value).write(to: agents.appendingPathComponent(name))
+                }
+                try Data("{not json".utf8).write(to: agents.appendingPathComponent("claude-998.json"))
+                swiftSessions = AgentSessionReader.read(directory: agents, processName: { names[$0] })
+            }
+        )
+
+        #expect(output.sessions.map(\.id) == ["claude-105", "codex-102", "claude-101", "claude-301", "claude-302"])
+        #expect(output.sessions.first { $0.pid == 301 }?.state == .working)
+        #expect(output.sessions.first { $0.pid == 302 }?.state == .approval)
+        #expect(output.sessions.first { $0.pid == 102 }?.finishedTurnDuration == 100)
+        #expect(output.sessions.first?.terminal == nil)
+        #expect(output.sessions == swiftSessions)
     }
 
     private func runCollectorMode<Output: Decodable>(
@@ -882,6 +941,10 @@ struct CollectorContractTests {
             print(json.dumps({"candidates": module.resource_control_candidates(
                 workloads, io_processes, process_candidates
             )}))
+        elif mode == "agent-sessions":
+            table = json.loads(os.environ.get("MACHINEPULSE_FAKE_PROCESS_TABLE", "[]"))
+            directory = os.path.join(os.environ["MACHINEPULSE_TEST_WORKSPACE"], "agents")
+            print(json.dumps({"sessions": module.agent_sessions(table, directory)}))
         elif mode == "darwin-snapshot":
             print(json.dumps(module.collect_darwin()))
         elif mode == "disk-scan":

@@ -2,7 +2,7 @@ import Foundation
 
 public protocol MetricSource: Sendable {
     var deviceID: String { get }
-    func collect() async throws -> MetricSample
+    func collect() async throws -> MetricCollection
 }
 
 public enum MetricSourceError: LocalizedError, Sendable, Equatable {

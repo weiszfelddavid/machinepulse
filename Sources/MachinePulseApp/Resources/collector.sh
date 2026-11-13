@@ -45,6 +45,12 @@ IGNORED_WORKLOAD_UNITS = {
     "ssh.service", "sshd.service", "systemd-networkd.service",
     "systemd-resolved.service", "systemd-timesyncd.service", "tailscaled.service",
 }
+AGENT_STATE_VERSION = 1
+AGENT_STATES = {"idle", "working", "approval", "waiting"}
+AGENT_PROCESS_NAMES = {"claude": {"claude", "node"}, "codex": {"codex"}}
+AGENT_RESUMED_MARGIN_SECONDS = 2
+MAX_AGENT_SESSIONS = 16
+MAX_AGENT_STATE_BYTES = 4_096
 RESOURCE_SCOPE_PROCESSES = {
     "chrome", "chromium", "firefox", "google-chrome",
     "aider", "claude", "codex", "cursor", "gemini", "hermes", "node", "openclaw",
@@ -1086,6 +1092,87 @@ def oom_context(mark, previous_mark):
     }
 
 
+# --- Agent sessions -----------------------------------------------------------
+# The machinepulse-agents plugin writes one small file per interactive Claude
+# Code or Codex session. These files are the only ones the collector reads for
+# agents: it keeps a session while its process is still that agent, and it
+# looks at the transcript's modification time, never at its content.
+
+def agent_state_directory():
+    base = os.environ.get("XDG_STATE_HOME") or os.path.join(os.path.expanduser("~"), ".local", "state")
+    return os.path.join(base, "machinepulse", "agents")
+
+
+def agent_text(value, maximum):
+    return value if isinstance(value, str) and 0 < len(value) <= maximum else None
+
+
+def agent_positive_integer(value):
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        return None
+    return value
+
+
+def parse_agent_session(record, names_by_pid, modified_time=os.path.getmtime):
+    if not isinstance(record, dict) or record.get("version") != AGENT_STATE_VERSION:
+        return None
+    agent = record.get("agent")
+    pid = agent_positive_integer(record.get("pid"))
+    state = record.get("state")
+    since = agent_positive_integer(record.get("since"))
+    if agent not in AGENT_PROCESS_NAMES or pid is None or state not in AGENT_STATES or since is None:
+        return None
+    if names_by_pid.get(pid, "").rsplit("/", 1)[-1] not in AGENT_PROCESS_NAMES[agent]:
+        return None
+    # A session blocked on approval writes nothing; a transcript that moved
+    # after the request means the answer came and the agent works again.
+    transcript = agent_text(record.get("transcript"), 1_024)
+    if state == "approval" and transcript:
+        try:
+            if modified_time(transcript) > since + AGENT_RESUMED_MARGIN_SECONDS:
+                state = "working"
+        except OSError:
+            pass
+    port = agent_positive_integer(record.get("sshPort"))
+    return {
+        "agent": agent,
+        "pid": pid,
+        "state": state,
+        "since": since,
+        "turnStartedAt": agent_positive_integer(record.get("turnStartedAt")),
+        "cwd": agent_text(record.get("cwd"), 1_024),
+        "tty": agent_text(record.get("tty"), 64),
+        "terminal": agent_text(record.get("terminal"), 64),
+        "terminalSession": agent_text(record.get("terminalSession"), 128),
+        "tmuxPane": agent_text(record.get("tmuxPane"), 32),
+        "sshPort": port if port is not None and port <= 65_535 else None,
+    }
+
+
+def agent_sessions(table, directory=None):
+    directory = directory or agent_state_directory()
+    try:
+        names = sorted(name for name in os.listdir(directory) if name.endswith(".json"))
+    except OSError:
+        return []
+    names_by_pid = {item["pid"]: item["name"] for item in table}
+    sessions = []
+    for name in names:
+        path = os.path.join(directory, name)
+        try:
+            if os.path.getsize(path) > MAX_AGENT_STATE_BYTES:
+                continue
+            with open(path, "r", encoding="utf-8") as handle:
+                record = json.load(handle)
+        except (OSError, ValueError):
+            continue
+        session = parse_agent_session(record, names_by_pid)
+        if session:
+            sessions.append(session)
+    sessions.sort(key=lambda session: session["since"], reverse=True)
+    return sessions[:MAX_AGENT_SESSIONS]
+
+
 def collect_linux():
     memory = meminfo()
     swap_total = memory.get("SwapTotal", 0)
@@ -1139,6 +1226,7 @@ def collect_linux():
         "expectedUnits": expected_metrics,
         "remoteWorkloads": workloads,
         "workloadResourceControls": workload_resource_controls(workloads, io_processes, table),
+        "agentSessions": agent_sessions(table),
         "oomKillMark": mark,
         "bootID": boot_id,
         "collectorVersion": LINUX_COLLECTOR_VERSION,
@@ -1334,6 +1422,7 @@ def collect_darwin():
         "topCPUProcesses": top_processes(table, "cpuPercent"),
         "topMemoryProcesses": top_processes(table, "residentBytes"),
         "failedServices": [],
+        "agentSessions": agent_sessions(table),
         "oomKillCount": 0,
         "bootID": values.get("kern.bootsessionuuid") or None,
         "collectorVersion": DARWIN_COLLECTOR_VERSION,

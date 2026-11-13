@@ -3,6 +3,7 @@ import Foundation
 import MachinePulseCore
 import Observation
 import ServiceManagement
+import UserNotifications
 
 @MainActor
 @Observable
@@ -18,9 +19,12 @@ final class AppModel {
     var runningServerError: String?
     var diskScans: [String: DiskScan] = [:]
     var diskScanActivity: [String: DiskScanActivity] = [:]
+    var agentSessions: [String: [AgentSessionMetric]] = [:]
+    var agentFocusMessages: [String: String] = [:]
     var preferences: [String: DevicePreference]
     var thresholdSettings: HealthThresholdSettings
     var notificationsEnabled: Bool
+    var agentNotificationsEnabled: Bool
     var localDisplayControls: SystemLocalDisplayController
     var isRefreshing = false
     var lastRefresh: Date?
@@ -32,6 +36,8 @@ final class AppModel {
     @ObservationIgnored private let discovery = TailscaleDiscovery()
     @ObservationIgnored private let localServerDiscovery = LocalServerDiscovery()
     @ObservationIgnored private let notifications = NotificationCoordinator()
+    @ObservationIgnored private var agentAttention = AgentAttentionTracker()
+    @ObservationIgnored private var agentNotificationResponder: AgentNotificationResponder?
     @ObservationIgnored private let store: MetricsStore?
     @ObservationIgnored private let collectorScript: Data?
     @ObservationIgnored private var sources: [String: any MetricSource] = [:]
@@ -52,6 +58,7 @@ final class AppModel {
     private static let preferencesKey = "devicePreferences.v1"
     private static let thresholdSettingsKey = "healthThresholdSettings.v2"
     private static let notificationsKey = "notificationsEnabled"
+    private static let agentNotificationsKey = "agentNotificationsEnabled"
     private static let statesKey = "lastHealthStates.v1"
     private static let sampleHistoryWindow = DiskGrowthAnalyzer.defaultWindow
     private static let pruneInterval: TimeInterval = 60 * 60
@@ -74,6 +81,7 @@ final class AppModel {
                 preferences = [:]
                 thresholdSettings = HealthThresholdSettings(preset: .balanced)
                 notificationsEnabled = false
+                agentNotificationsEnabled = false
                 localDisplayControls = Self.previewDisplayController()
                 persistedStates = [:]
                 store = nil
@@ -90,6 +98,7 @@ final class AppModel {
             Self.decode(HealthThresholdSettings.self, from: defaults.data(forKey: Self.thresholdSettingsKey))
             ?? HealthThresholdSettings(preset: .balanced)
         notificationsEnabled = defaults.object(forKey: Self.notificationsKey) as? Bool ?? true
+        agentNotificationsEnabled = defaults.object(forKey: Self.agentNotificationsKey) as? Bool ?? true
         localDisplayControls = SystemLocalDisplayController()
         persistedStates = Self.decode([String: HealthState].self, from: defaults.data(forKey: Self.statesKey)) ?? [:]
 
@@ -163,7 +172,12 @@ final class AppModel {
         guard refreshLoop == nil else { return }
         localDisplayControls.start()
         launchesAtLogin = SMAppService.mainApp.status == .enabled
-        if notificationsEnabled {
+        let responder = AgentNotificationResponder { [weak self] deviceID, sessionID in
+            self?.openAgentSession(deviceID: deviceID, sessionID: sessionID)
+        }
+        agentNotificationResponder = responder
+        UNUserNotificationCenter.current().delegate = responder
+        if notificationsEnabled || agentNotificationsEnabled {
             Task { await notifications.requestPermission() }
         }
         refreshLoop = Task { [weak self] in
@@ -259,9 +273,10 @@ final class AppModel {
 
         for result in results {
             switch result {
-            case let .success(id, sample):
+            case let .success(id, collection):
                 scheduler.reset(deviceID: id)
-                await accept(sample, for: id)
+                await accept(collection.sample, for: id)
+                await acceptAgentSessions(collection.agentSessions, for: id)
             case let .failure(id, failure):
                 let nextAttempt = scheduler.recordFailure(deviceID: id, now: Date())
                 PulseLog.collection.error(
@@ -294,6 +309,7 @@ final class AppModel {
             reports[device.id] = nil
             sources[device.id] = nil
             sourceKeys[device.id] = nil
+            forgetAgentSessions(for: device.id)
         }
         Task { await refreshNow() }
     }
@@ -304,6 +320,7 @@ final class AppModel {
         preferences[device.id] = preference
         sources[device.id] = nil
         sourceKeys[device.id] = nil
+        forgetAgentSessions(for: device.id)
         persistPreferences()
         Task { await refreshNow() }
     }
@@ -343,6 +360,45 @@ final class AppModel {
         notificationsEnabled = enabled
         UserDefaults.standard.set(enabled, forKey: Self.notificationsKey)
         if enabled { Task { await notifications.requestPermission() } }
+    }
+
+    func setAgentNotificationsEnabled(_ enabled: Bool) {
+        agentNotificationsEnabled = enabled
+        UserDefaults.standard.set(enabled, forKey: Self.agentNotificationsKey)
+        if enabled { Task { await notifications.requestPermission() } }
+    }
+
+    func supportsAgentSessions(_ device: MachineDevice) -> Bool {
+        !(agentSessions[device.id] ?? []).isEmpty
+    }
+
+    func focus(_ session: AgentSessionMetric, on device: MachineDevice) async {
+        agentFocusMessages[device.id] = await TerminalFocus.focus(session, isLocal: device.isLocal)
+    }
+
+    private func openAgentSession(deviceID: String, sessionID: String) {
+        guard
+            let device = devices.first(where: { $0.id == deviceID }),
+            let session = agentSessions[deviceID]?.first(where: { $0.id == sessionID })
+        else { return }
+        Task { await focus(session, on: device) }
+    }
+
+    private func acceptAgentSessions(_ sessions: [AgentSessionMetric], for id: String) async {
+        agentSessions[id] = sessions.isEmpty ? nil : sessions
+        let attentions = agentAttention.process(deviceID: id, sessions: sessions)
+        guard agentNotificationsEnabled, !attentions.isEmpty else { return }
+        let device = devices.first { $0.id == id }
+        let machineName = device?.isLocal == true ? nil : device?.name
+        for attention in attentions {
+            await notifications.postAgentAttention(attention, machineName: machineName)
+        }
+    }
+
+    private func forgetAgentSessions(for id: String) {
+        agentSessions[id] = nil
+        agentFocusMessages[id] = nil
+        agentAttention.forget(deviceID: id)
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
@@ -555,6 +611,7 @@ final class AppModel {
             sources[id] = nil
             sourceKeys[id] = nil
             scheduler.reset(deviceID: id)
+            forgetAgentSessions(for: id)
         }
 
         for device in enabled where preferences[device.id]?.mode == .deep {
@@ -740,7 +797,7 @@ extension AppModel {
 }
 
 private enum CollectionResult: Sendable {
-    case success(String, MetricSample)
+    case success(String, MetricCollection)
     case failure(String, MetricCollectionFailure)
 }
 

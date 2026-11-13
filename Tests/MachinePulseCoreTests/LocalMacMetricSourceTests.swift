@@ -7,7 +7,7 @@ struct LocalMacMetricSourceTests {
         let source = LocalMacMetricSource(deviceID: "this-mac")
         _ = try await source.collect()
         try await Task.sleep(for: .milliseconds(50))
-        let sample = try await source.collect()
+        let sample = try await source.collect().sample
 
         #expect(sample.memoryTotalBytes > 0)
         #expect(sample.diskTotalBytes > 0)

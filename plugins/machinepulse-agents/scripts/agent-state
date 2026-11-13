@@ -1,0 +1,109 @@
+#!/bin/sh
+# Records the state of one interactive Claude Code or Codex session so that
+# MachinePulse can list it and say when it waits for you.
+#
+#   agent-state <start|prompt|approval|stop|idle|end>
+#
+# One file per agent process, ${XDG_STATE_HOME:-~/.local/state}/machinepulse/
+# agents/<agent>-<pid>.json, replaced on every event and removed at the end.
+# It holds no prompt or answer text. The script prints nothing and always
+# exits 0: both agents read hook output as instructions, and a Stop hook that
+# exits 2 keeps the agent working.
+
+event=${1:-}
+input=$(cat)
+umask 077
+
+directory=${XDG_STATE_HOME:-$HOME/.local/state}/machinepulse/agents
+
+# The hook runs under a shell that the agent starts; the agent is the nearest
+# ancestor named claude or codex. Claude Code installed with npm runs as node.
+pid= agent= candidate=$PPID depth=0
+while [ "$depth" -lt 6 ] && [ "${candidate:-0}" -gt 1 ]; do
+    line=$(ps -o ppid= -o comm= -p "$candidate" 2>/dev/null) || break
+    read -r parent name <<EOF
+$line
+EOF
+    case ${name##*/} in
+        claude | node) pid=$candidate agent=claude ;;
+        codex) pid=$candidate agent=codex ;;
+    esac
+    [ -n "$pid" ] && break
+    candidate=$parent depth=$((depth + 1))
+done
+[ -n "$pid" ] || exit 0
+file=$directory/$agent-$pid.json
+
+if [ "$event" = end ]; then
+    rm -f "$file"
+    exit 0
+fi
+
+# A session without a terminal is a scripted run (claude -p, codex exec):
+# nobody waits for it at a keyboard.
+set -- $(ps -o tty= -p "$pid" 2>/dev/null)
+tty=${1:-}
+case $tty in '' | '?' | '??') exit 0 ;; esac
+
+previous_state= turn=0
+if [ -f "$file" ]; then
+    previous=$(sed -n 's/.*"state":"\([a-z]*\)".*"turnStartedAt":\([0-9]*\).*/\1 \2/p' "$file")
+    previous_state=${previous% *}
+    turn=${previous#* }
+    case $turn in '' | *[!0-9]*) turn=0 ;; esac
+fi
+
+now=$(date +%s)
+case $event in
+    start)
+        # Claude Code also starts a session after compacting mid-turn.
+        if [ "$previous_state" = working ]; then state=working; else state=idle turn=0; fi
+        ;;
+    prompt) state=working turn=$now ;;
+    approval) state=approval ;;
+    stop) state=waiting ;;
+    idle)
+        # Claude Code reports idle a minute after any turn; it only matters
+        # when the turn was interrupted and no Stop came.
+        [ "$previous_state" = working ] || exit 0
+        state=idle
+        ;;
+    *) exit 0 ;;
+esac
+
+# The values stay JSON-escaped as the agent sent them.
+json_string() {
+    printf '%s\n' "$input" |
+        sed -nE 's/.*"'"$1"'"[[:space:]]*:[[:space:]]*"(([^"\\]|\\.)*)".*/\1/p' | head -n 1
+}
+
+identifier() {
+    case $1 in *[!A-Za-z0-9._:/@%+=-]*) ;; *) printf '%s' "$1" ;; esac
+}
+
+cwd=$(json_string cwd)
+if [ -z "$cwd" ]; then cwd=$(identifier "$PWD"); fi
+transcript=$(json_string transcript_path)
+
+ssh_port=null
+if [ -n "${SSH_CONNECTION:-}" ]; then
+    set -- $SSH_CONNECTION
+    case ${2:-} in '' | *[!0-9]*) ;; *) ssh_port=$2 ;; esac
+fi
+
+mkdir -p "$directory" 2>/dev/null || exit 0
+if [ "$event" = start ]; then
+    for existing in "$directory"/*.json; do
+        [ -f "$existing" ] || continue
+        other=${existing%.json}
+        other=${other##*-}
+        case $other in '' | *[!0-9]*) continue ;; esac
+        kill -0 "$other" 2>/dev/null || rm -f "$existing"
+    done
+fi
+
+printf '{"version":1,"agent":"%s","pid":%s,"state":"%s","since":%s,"turnStartedAt":%s,"cwd":"%s","transcript":"%s","tty":"%s","terminal":"%s","terminalSession":"%s","tmuxPane":"%s","sshPort":%s}\n' \
+    "$agent" "$pid" "$state" "$now" "$turn" "$cwd" "$transcript" "$(identifier "$tty")" \
+    "$(identifier "${TERM_PROGRAM:-}")" "$(identifier "${ITERM_SESSION_ID:-${TERM_SESSION_ID:-}}")" \
+    "$(identifier "${TMUX_PANE:-}")" "$ssh_port" >"$file.$$" && mv -f "$file.$$" "$file"
+exit 0

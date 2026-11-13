@@ -11,7 +11,7 @@ enum MachinePulseVerifier {
         let localSource = LocalMacMetricSource(deviceID: "verification-mac")
         _ = try await localSource.collect()
         try await Task.sleep(for: .milliseconds(60))
-        let localSample = try await localSource.collect()
+        let localSample = try await localSource.collect().sample
         try require(localSample.memoryTotalBytes > 0, "Local memory collection failed")
         try require(localSample.memoryPressureLevel != nil, "Local memory pressure collection failed")
         try require((0...1).contains(localSample.memoryUsedFraction), "Local memory result is outside 0...100%")

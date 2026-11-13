@@ -22,6 +22,8 @@
 	<string>38</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>MachinePulse selects the terminal tab of the agent session you open.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 David Weiszfeld</string>
 </dict>

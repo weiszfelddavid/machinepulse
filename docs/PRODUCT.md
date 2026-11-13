@@ -12,7 +12,7 @@ MachinePulse answers four questions in order: is a machine healthy now, which in
 - **Recovered** keeps duration, peak, and retained evidence without keeping health elevated. A recovered incident stays featured for five minutes, then lives on in history and diagnostics.
 - **Loading** separates discovery from waiting for a first full-metrics sample.
 
-Severity is always written as text; colour is supporting information. The menu-bar pulse gains an orange dot for a warning and a red dot for critical or unreachable, breathing slowly unless Reduce Motion is on. Notifications fire only when a machine's stabilized health changes.
+Severity is always written as text; colour is supporting information. The menu-bar pulse gains an orange dot for a warning and a red dot for critical or unreachable, breathing slowly unless Reduce Motion is on. Health notifications fire only when a machine's stabilized health changes. Agent notifications are separate and never change health, the badge, or an incident.
 
 ## Incidents
 
@@ -58,6 +58,12 @@ On a full-metrics Linux machine the section lists at most 16 systemd services an
 
 Limits are information until the workload shows a harmful result: two or more new `memory.high` events warn; a new memory max, OOM, or OOM kill is critical; memory at 90% of a configured limit warns only while the host is under memory pressure; a CPU quota warns at 20% throttled periods and is critical at 50%; reaching `TasksMax` warns; a watched service failed in two adjacent samples is critical. Counter deltas need adjacent samples from the same boot and cgroup identity. Workload findings are separate records but the machine's state, badge, and notification use one maximum severity. Remote workloads never expose stop, restart, or configuration actions.
 
+### Agent sessions
+
+On a full-metrics machine with the `machinepulse-agents` plugin, **Agents** comes first in Workloads. Each row shows the project folder, the agent, and the state: **Working for 12m**, **Needs approval** in orange, **Finished 2 minutes ago after 6m**, or **Idle**. A click opens the session's terminal; when MachinePulse cannot find it, one line says why. A machine without the Workloads section, such as another Mac, shows it while it has sessions.
+
+A notification comes once for each finished turn of 30 seconds or more and once for each approval request. Shorter turns are a conversation at the keyboard. Sessions that finished before MachinePulse first saw the machine are not announced. A newer notification for a session replaces the older one.
+
 ## Storage
 
 Nothing happens until **Scan**. A scan walks the home directory once, takes seconds to about a minute, and stays on the card until the next scan.
@@ -74,4 +80,4 @@ Local controls are off by default and appear inside the expanded This Mac card. 
 
 ## Settings
 
-Alert sensitivity, per-machine monitoring mode, SSH target, and watchlist, local controls, notifications, and **Launch MachinePulse at login**, a standard login item that stays off until switched on. Settings → General also opens the repository and an issue form. Updates are manual: pull, rebuild, reinstall.
+Alert sensitivity, per-machine monitoring mode, SSH target, and watchlist, local controls, health and agent notifications, the plugin install commands, and **Launch MachinePulse at login**, a standard login item that stays off until switched on. Settings → General also opens the repository and an issue form. Updates are manual: pull, rebuild, reinstall.
