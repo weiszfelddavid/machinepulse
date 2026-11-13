@@ -3,7 +3,6 @@ import Foundation
 import MachinePulseCore
 import Observation
 import ServiceManagement
-import UserNotifications
 
 @MainActor
 @Observable
@@ -21,6 +20,7 @@ final class AppModel {
     var diskScanActivity: [String: DiskScanActivity] = [:]
     var agentSessions: [String: [AgentSessionMetric]] = [:]
     var agentFocusMessages: [String: String] = [:]
+    var waitingAgents: [AgentAttention] = []
     var preferences: [String: DevicePreference]
     var thresholdSettings: HealthThresholdSettings
     var notificationsEnabled: Bool
@@ -37,7 +37,7 @@ final class AppModel {
     @ObservationIgnored private let localServerDiscovery = LocalServerDiscovery()
     @ObservationIgnored private let notifications = NotificationCoordinator()
     @ObservationIgnored private var agentAttention = AgentAttentionTracker()
-    @ObservationIgnored private var agentNotificationResponder: AgentNotificationResponder?
+    @ObservationIgnored private let agentBubble = AgentBubble()
     @ObservationIgnored private let store: MetricsStore?
     @ObservationIgnored private let collectorScript: Data?
     @ObservationIgnored private var sources: [String: any MetricSource] = [:]
@@ -172,12 +172,7 @@ final class AppModel {
         guard refreshLoop == nil else { return }
         localDisplayControls.start()
         launchesAtLogin = SMAppService.mainApp.status == .enabled
-        let responder = AgentNotificationResponder { [weak self] deviceID, sessionID in
-            self?.openAgentSession(deviceID: deviceID, sessionID: sessionID)
-        }
-        agentNotificationResponder = responder
-        UNUserNotificationCenter.current().delegate = responder
-        if notificationsEnabled || agentNotificationsEnabled {
+        if notificationsEnabled {
             Task { await notifications.requestPermission() }
         }
         refreshLoop = Task { [weak self] in
@@ -276,7 +271,7 @@ final class AppModel {
             case let .success(id, collection):
                 scheduler.reset(deviceID: id)
                 await accept(collection.sample, for: id)
-                await acceptAgentSessions(collection.agentSessions, for: id)
+                acceptAgentSessions(collection.agentSessions, for: id)
             case let .failure(id, failure):
                 let nextAttempt = scheduler.recordFailure(deviceID: id, now: Date())
                 PulseLog.collection.error(
@@ -365,7 +360,7 @@ final class AppModel {
     func setAgentNotificationsEnabled(_ enabled: Bool) {
         agentNotificationsEnabled = enabled
         UserDefaults.standard.set(enabled, forKey: Self.agentNotificationsKey)
-        if enabled { Task { await notifications.requestPermission() } }
+        if !enabled { dismissWaitingAgents() }
     }
 
     func supportsAgentSessions(_ device: MachineDevice) -> Bool {
@@ -373,32 +368,49 @@ final class AppModel {
     }
 
     func focus(_ session: AgentSessionMetric, on device: MachineDevice) async {
+        waitingAgents.removeAll { $0.deviceID == device.id && $0.session.id == session.id }
+        showWaitingAgents()
         agentFocusMessages[device.id] = await TerminalFocus.focus(session, isLocal: device.isLocal)
     }
 
-    private func openAgentSession(deviceID: String, sessionID: String) {
-        guard
-            let device = devices.first(where: { $0.id == deviceID }),
-            let session = agentSessions[deviceID]?.first(where: { $0.id == sessionID })
-        else { return }
-        Task { await focus(session, on: device) }
+    private func open(_ attention: AgentAttention) {
+        guard let device = devices.first(where: { $0.id == attention.deviceID }) else { return }
+        Task { await focus(attention.session, on: device) }
     }
 
-    private func acceptAgentSessions(_ sessions: [AgentSessionMetric], for id: String) async {
+    private func dismissWaitingAgents() {
+        waitingAgents = []
+        showWaitingAgents()
+    }
+
+    private func acceptAgentSessions(_ sessions: [AgentSessionMetric], for id: String) {
         agentSessions[id] = sessions.isEmpty ? nil : sessions
-        let attentions = agentAttention.process(deviceID: id, sessions: sessions)
-        guard agentNotificationsEnabled, !attentions.isEmpty else { return }
-        let device = devices.first { $0.id == id }
-        let machineName = device?.isLocal == true ? nil : device?.name
-        for attention in attentions {
-            await notifications.postAgentAttention(attention, machineName: machineName)
-        }
+        let fresh = agentAttention.process(deviceID: id, sessions: sessions)
+        let kept = AgentAttentionTracker.stillWaiting(waitingAgents.filter { $0.deviceID == id }, sessions: sessions)
+        waitingAgents =
+            waitingAgents.filter { $0.deviceID != id } + kept + (agentNotificationsEnabled ? fresh : [])
+        showWaitingAgents()
+    }
+
+    func showWaitingAgents() {
+        let machineNames = Dictionary(
+            devices.filter { !$0.isLocal }.map { ($0.id, $0.name) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        agentBubble.show(
+            waitingAgents.sorted { $0.session.since < $1.session.since },
+            machineNames: machineNames,
+            open: { [weak self] in self?.open($0) },
+            dismiss: { [weak self] in self?.dismissWaitingAgents() }
+        )
     }
 
     private func forgetAgentSessions(for id: String) {
         agentSessions[id] = nil
         agentFocusMessages[id] = nil
         agentAttention.forget(deviceID: id)
+        waitingAgents.removeAll { $0.deviceID == id }
+        showWaitingAgents()
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {

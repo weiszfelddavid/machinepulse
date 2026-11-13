@@ -138,6 +138,43 @@ struct AgentAttentionTrackerTests {
         #expect(tracker.process(deviceID: "a", sessions: [later]).isEmpty)
     }
 
+    @Test func anAttentionLastsUntilANewPromptAnAnswerOrTheEnd() throws {
+        let finished = try #require(
+            AgentAttention(
+                deviceID: "vps", session: session(pid: 5, state: .waiting, since: 1_100, turnStartedAt: 1_000)))
+        let blocked = try #require(
+            AgentAttention(deviceID: "vps", session: session(pid: 6, state: .approval, since: 1_050)))
+        let waiting = [finished, blocked]
+
+        #expect(
+            AgentAttentionTracker.stillWaiting(
+                waiting,
+                sessions: [
+                    session(pid: 5, state: .waiting, since: 1_100, turnStartedAt: 1_000),
+                    session(pid: 6, state: .approval, since: 1_050),
+                ]
+            ).map(\.id) == waiting.map(\.id))
+        #expect(
+            AgentAttentionTracker.stillWaiting(
+                waiting,
+                sessions: [
+                    session(pid: 5, state: .working, since: 1_200, turnStartedAt: 1_200),
+                    session(pid: 6, state: .working, since: 1_050),
+                ]
+            ).isEmpty)
+        #expect(AgentAttentionTracker.stillWaiting(waiting, sessions: []).isEmpty)
+    }
+
+    @Test func theBubbleGrowsOneStepAMinuteForTenMinutes() {
+        #expect(AgentAttention.bubbleScale(waitingFor: 0) == 1)
+        #expect(AgentAttention.bubbleScale(waitingFor: 59) == 1)
+        #expect(AgentAttention.bubbleScale(waitingFor: 60) == 1.1)
+        #expect(abs(AgentAttention.bubbleScale(waitingFor: 5 * 60 + 30) - 1.5) < 1e-9)
+        #expect(AgentAttention.bubbleScale(waitingFor: 10 * 60) == 2)
+        #expect(AgentAttention.bubbleScale(waitingFor: 3 * 60 * 60) == 2)
+        #expect(AgentAttention.bubbleScale(waitingFor: -30) == 1)
+    }
+
     private func session(
         pid: Int32,
         state: AgentSessionState,

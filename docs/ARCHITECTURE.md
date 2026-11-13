@@ -15,7 +15,7 @@ Tailscale status ──→ discovery ──→ per-device preferences
                                        │
                             IncidentStabilizer
                                        │
-                    AppModel → popover, SQLite, notifications
+                    AppModel → popover, SQLite, notifications, agent bubble
 ```
 
 ## Targets
@@ -43,7 +43,7 @@ The `machinepulse-agents` plugin in `plugins/` is one hook script for Claude Cod
 
 The collector reads these files on Linux and macOS, and `AgentSessionReader` reads them natively on this Mac, with the same rules: version 1 only, a known agent and state, the process ID still running as that agent, 4 KiB per file, 16 sessions. A session in `approval` whose transcript changed after the request is working again; only the modification time is read. A collection returns a `MetricCollection`: the sample, and the sessions, which are never stored and never reach health.
 
-`AgentAttentionTracker` is pure. It announces each finished turn of 30 seconds or more once and each approval request once, and the first collection of a machine only sets the baseline. `TerminalFocus` in the app walks from the process to the first regular app, which is the terminal. For Terminal and iTerm2 it selects the tab with the session's terminal device through Apple Events. For a remote session, the process is the local `ssh` client whose source port matches the port in the session's `SSH_CONNECTION`.
+`AgentAttention` and `AgentAttentionTracker` are pure. A finished turn of 30 seconds or more, or an approval request, is one attention; each is announced once, the first collection of a machine only sets the baseline, and an attention stays until its session no longer waits for the same reason. `AgentBubble` in the app shows them in one non-activating panel per display at the bottom center, at status-bar level on all Spaces: the card is laid out at its peak size and scaled down so the text stays sharp, and a minute timeline from the oldest wait drives its growth. `TerminalFocus` in the app walks from the process to the first regular app, which is the terminal. For Terminal and iTerm2 it selects the tab with the session's terminal device through Apple Events. For a remote session, the process is the local `ssh` client whose source port matches the port in the session's `SSH_CONNECTION`.
 
 ## Health
 

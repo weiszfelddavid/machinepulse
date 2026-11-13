@@ -57,8 +57,8 @@ codex plugin add machinepulse-agents@machinepulse
 The plugin is one POSIX `sh` hook. It writes one small file for each interactive session to `~/.local/state/machinepulse/agents/`, and MachinePulse reads it on its usual ten-second pass. The machine must be monitored with **Full metrics**.
 
 - **Workloads** lists each session with its project and state: working, needs approval, finished, or idle.
-- A notification comes when a task of 30 seconds or more finishes, and at once when a session needs approval. Turn it off in Settings.
-- A click on the notification or the row opens the session's terminal. On this Mac it selects the exact Terminal or iTerm2 tab and brings any other terminal app to the front. For a remote machine, it finds the `ssh` connection from this Mac that the session runs in and selects that tab. macOS asks once for each terminal app (Automation).
+- A bubble rises from the bottom center of each display when a task of 30 seconds or more finishes, and at once when a session needs approval. It has the opposite colors of the system appearance and grows one step a minute for ten minutes while the agent waits. It stays until you open the session, press ×, or the agent works again. Hover over it to see the folder, the task length, and the other sessions that wait. Turn it off in Settings.
+- A click on the bubble or the row opens the session's terminal. On this Mac it selects the exact Terminal or iTerm2 tab and brings any other terminal app to the front. For a remote machine, it finds the `ssh` connection from this Mac that the session runs in and selects that tab. macOS asks once for each terminal app (Automation).
 
 Limits: a session without a terminal (`claude -p`, `codex exec`) is not listed. A session inside tmux on a remote machine is listed, but the click finds its tab only if you did not reattach through a new SSH connection. With OpenSSH `ControlMaster`, all sessions to one host share one connection, so the click opens the tab that opened that connection.
 

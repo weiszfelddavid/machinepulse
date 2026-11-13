@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Agent sessions: the optional `machinepulse-agents` plugin for Claude Code and Codex records each interactive session on any monitored machine. Workloads lists them, a notification comes when a task of 30 seconds or more finishes or a session needs approval, and a click opens the session's Terminal or iTerm2 tab, through the local `ssh` connection for a remote machine.
+- Agent sessions: the optional `machinepulse-agents` plugin for Claude Code and Codex records each interactive session on any monitored machine. Workloads lists them. When a task of 30 seconds or more finishes or a session needs approval, a bubble rises from the bottom center of the screen and grows each minute while the agent waits. A click opens the session's Terminal or iTerm2 tab, through the local `ssh` connection for a remote machine.
 - Docs: on macOS 27 the Command Line Tools cannot build the app, since the SDK's SwiftUI macros need the plugin that ships only with Xcode. Found by the first install from source on a macOS 27 Mac.
 
 ## 0.5.16 (38)

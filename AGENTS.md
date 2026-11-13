@@ -42,7 +42,7 @@ xcodegen generate                           # after editing project.yml; commit 
 8. **Display controls cannot reach monitoring.** `LocalDisplaySessionManager` is pure policy; XDR Boost starts off after every launch, is capped at 2×, times out, and yields to battery, thermal, session, and headroom rules. The overlay never reads pixels.
 9. **Schema changes are additive.** The database is never deleted or recreated; stored incidents from earlier versions decode unchanged.
 10. **The treemap and the chart are painted, not composed.** Hundreds of tiles belong in one `Canvas`; labels are clipped to their own tile.
-11. **Agent sessions never change health and are never stored.** They can post their own notification, never an incident or a badge. The plugin hook prints nothing, always exits 0, and stores no prompt or answer text; the collector reads a transcript's modification time, never its content.
+11. **Agent sessions never change health and are never stored.** They can show their own bubble, never an incident, a notification, or a badge. The plugin hook prints nothing, always exits 0, and stores no prompt or answer text; the collector reads a transcript's modification time, never its content.
 
 ## Where changes belong
 
@@ -62,7 +62,8 @@ xcodegen generate                           # after editing project.yml; commit 
 | a screen or a card | `Sources/MachinePulseApp/Views/` |
 | display policy | `Sources/MachinePulseCore/LocalControls/`; adapters in `Sources/MachinePulseApp/Display/` |
 | what the agent hook records | `plugins/machinepulse-agents/scripts/agent-state`, hooks in `plugins/machinepulse-agents/hooks/hooks.json` |
-| agent session rules, notification policy | `Sources/MachinePulseCore/Agents/`; the collector's `agent_sessions` must keep the same rules |
+| agent session rules, when a session waits for you, bubble growth | `Sources/MachinePulseCore/Agents/`; the collector's `agent_sessions` must keep the same rules |
+| the waiting-agent bubble | `Sources/MachinePulseApp/App/AgentBubble.swift` |
 | opening a session's terminal | `Sources/MachinePulseApp/App/TerminalFocus.swift` |
 
 ## Verification expectations
