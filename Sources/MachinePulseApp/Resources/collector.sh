@@ -47,7 +47,7 @@ IGNORED_WORKLOAD_UNITS = {
 }
 AGENT_STATE_VERSION = 1
 AGENT_STATES = {"idle", "working", "approval", "waiting"}
-AGENT_PROCESS_NAMES = {"claude": {"claude", "node"}, "codex": {"codex"}}
+AGENT_KINDS = {"claude", "codex"}
 AGENT_RESUMED_MARGIN_SECONDS = 2
 MAX_AGENT_SESSIONS = 16
 MAX_AGENT_STATE_BYTES = 4_096
@@ -1095,8 +1095,9 @@ def oom_context(mark, previous_mark):
 # --- Agent sessions -----------------------------------------------------------
 # The machinepulse-agents plugin writes one small file per interactive Claude
 # Code or Codex session. These files are the only ones the collector reads for
-# agents: it keeps a session while its process is still that agent, and it
-# looks at the transcript's modification time, never at its content.
+# agents: it keeps a session while its process ID still runs under the name the
+# hook recorded from `ps`, and it looks at the transcript's modification time,
+# never at its content.
 
 def agent_state_directory():
     base = os.environ.get("XDG_STATE_HOME") or os.path.join(os.path.expanduser("~"), ".local", "state")
@@ -1118,11 +1119,12 @@ def parse_agent_session(record, names_by_pid, modified_time=os.path.getmtime):
         return None
     agent = record.get("agent")
     pid = agent_positive_integer(record.get("pid"))
+    process = agent_text(record.get("process"), 64)
     state = record.get("state")
     since = agent_positive_integer(record.get("since"))
-    if agent not in AGENT_PROCESS_NAMES or pid is None or state not in AGENT_STATES or since is None:
+    if agent not in AGENT_KINDS or pid is None or not process or state not in AGENT_STATES or since is None:
         return None
-    if names_by_pid.get(pid, "").rsplit("/", 1)[-1] not in AGENT_PROCESS_NAMES[agent]:
+    if names_by_pid.get(pid, "").rsplit("/", 1)[-1] != process:
         return None
     # A session blocked on approval writes nothing; a transcript that moved
     # after the request means the answer came and the agent works again.

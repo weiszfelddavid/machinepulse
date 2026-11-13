@@ -27,8 +27,8 @@ Never read, anywhere: command lines, environment variables, file contents other 
 The optional `machinepulse-agents` plugin runs inside Claude Code or Codex as a hook, never inside MachinePulse. It is one POSIX `sh` script in this repository.
 
 - It writes one file for each interactive session, `<agent>-<pid>.json`, with mode 0600 in a 0700 directory. It replaces the file on each event and removes it when the session ends. On a session start it also removes the files of agent processes that no longer exist.
-- The file holds the agent name, its process ID and terminal, the state and two timestamps, the working directory and transcript path from the hook input, `TERM_PROGRAM`, `TERM_SESSION_ID` or `ITERM_SESSION_ID`, `TMUX_PANE`, and the source port from `SSH_CONNECTION`. It never holds prompt or answer text.
-- It reads its own process ancestors with `ps` to find the agent. It prints nothing and always exits 0, because the agents read hook output as instructions.
+- The file holds the agent name, its process ID, process name as `ps` shows it, and terminal, the state and two timestamps, the working directory and transcript path from the hook input, `TERM_PROGRAM`, `TERM_SESSION_ID` or `ITERM_SESSION_ID`, `TMUX_PANE`, and the source port from `SSH_CONNECTION`. It never holds prompt or answer text.
+- It reads its own process ancestors with `ps`: the agent is the first one that is not a shell. It prints nothing and always exits 0, because the agents read hook output as instructions.
 - A session without a terminal writes nothing.
 
 Monitoring reveals operational metadata to the user of this Mac. Grant SSH access accordingly.

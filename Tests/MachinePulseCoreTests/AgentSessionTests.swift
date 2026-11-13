@@ -3,24 +3,24 @@ import Testing
 @testable import MachinePulseCore
 
 struct AgentSessionReaderTests {
-    @Test func keepsOnlySessionsWhoseProcessIsStillTheAgent() throws {
+    @Test func keepsOnlySessionsWhoseProcessStillRunsUnderTheRecordedName() async throws {
         let directory = try temporaryAgentsDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         try write(record(agent: "claude", pid: 101, state: "working", since: 1_000), to: directory)
         try write(record(agent: "codex", pid: 102, state: "waiting", since: 2_000, turnStartedAt: 1_900), to: directory)
         try write(record(agent: "claude", pid: 103, state: "idle", since: 3_000), to: directory)
         try write(record(agent: "claude", pid: 104, state: "idle", since: 4_000), to: directory)
-        try write(record(agent: "claude", pid: 105, state: "idle", since: 5_000), to: directory)
+        try write(record(agent: "claude", pid: 105, state: "idle", since: 5_000, process: "2.1.323"), to: directory)
 
-        let names: [Int32: String] = [101: "claude", 102: "codex", 103: "python3", 105: "node"]
-        let sessions = AgentSessionReader.read(directory: directory, processName: { names[$0] })
+        let names: [Int32: String] = [101: "claude", 102: "/opt/example/bin/codex", 103: "python3", 105: "2.1.323"]
+        let sessions = await AgentSessionReader.read(directory: directory, processNames: { _ in names })
 
         #expect(sessions.map(\.id) == ["claude-105", "codex-102", "claude-101"])
         #expect(sessions.map(\.state) == [.idle, .waiting, .working])
         #expect(sessions[1].finishedTurnDuration == 100)
     }
 
-    @Test func skipsUnknownVersionsStatesAgentsOversizedAndMalformedFiles() throws {
+    @Test func skipsUnknownVersionsStatesAgentsOversizedAndMalformedFiles() async throws {
         let directory = try temporaryAgentsDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         var future = record(agent: "claude", pid: 201, state: "working", since: 1_000)
@@ -36,15 +36,18 @@ struct AgentSessionReaderTests {
         odd["cwd"] = 42
         odd["tty"] = ""
         try write(odd, to: directory)
+        var unnamed = record(agent: "claude", pid: 207, state: "working", since: 1_000)
+        unnamed["process"] = nil
+        try write(unnamed, to: directory)
 
-        let sessions = AgentSessionReader.read(directory: directory, processName: { _ in "claude" })
+        let sessions = await AgentSessionReader.read(directory: directory, processNames: named("claude"))
 
         #expect(sessions.map(\.id) == ["claude-206"])
         #expect(sessions.first?.cwd == nil)
         #expect(sessions.first?.tty == nil)
     }
 
-    @Test func approvalTurnsBackToWorkingOnceTheTranscriptMoves() throws {
+    @Test func approvalTurnsBackToWorkingOnceTheTranscriptMoves() async throws {
         let directory = try temporaryAgentsDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         var answered = record(agent: "claude", pid: 301, state: "approval", since: 1_000)
@@ -58,9 +61,9 @@ struct AgentSessionReaderTests {
             "/transcripts/answered.jsonl": Date(timeIntervalSince1970: 1_010),
             "/transcripts/pending.jsonl": Date(timeIntervalSince1970: 1_001),
         ]
-        let sessions = AgentSessionReader.read(
+        let sessions = await AgentSessionReader.read(
             directory: directory,
-            processName: { _ in "claude" },
+            processNames: named("claude"),
             modificationDate: { modified[$0] }
         )
 
@@ -68,9 +71,16 @@ struct AgentSessionReaderTests {
         #expect(sessions.first { $0.pid == 302 }?.state == .approval)
     }
 
-    @Test func aMissingDirectoryMeansNoSessions() {
+    @Test func aMissingDirectoryMeansNoSessions() async {
         let missing = FileManager.default.temporaryDirectory.appendingPathComponent("MachinePulseMissing-\(UUID())")
-        #expect(AgentSessionReader.read(directory: missing).isEmpty)
+        #expect(await AgentSessionReader.read(directory: missing).isEmpty)
+    }
+
+    @Test func runningProcessNamesComeFromPS() async {
+        let me = ProcessInfo.processInfo.processIdentifier
+        let names = await AgentSessionReader.processNames(of: [me, 999_999])
+        #expect(names[me] != nil)
+        #expect(names[999_999] == nil)
     }
 
     @Test func theCollectorsSessionShapeDecodes() throws {
@@ -191,16 +201,22 @@ struct AgentAttentionTrackerTests {
     }
 }
 
-func record(agent: String, pid: Int, state: String, since: Int, turnStartedAt: Int = 0) -> [String: Any] {
+func record(
+    agent: String, pid: Int, state: String, since: Int, turnStartedAt: Int = 0, process: String? = nil
+) -> [String: Any] {
     [
-        "version": 1, "agent": agent, "pid": pid, "state": state, "since": since,
+        "version": 1, "agent": agent, "pid": pid, "process": process ?? agent, "state": state, "since": since,
         "turnStartedAt": turnStartedAt, "cwd": "/home/example/code/project-\(pid)",
         "transcript": "", "tty": "pts/\(pid % 10)", "terminal": "", "terminalSession": "",
         "tmuxPane": "", "sshPort": NSNull(),
     ]
 }
 
-private func temporaryAgentsDirectory() throws -> URL {
+private func named(_ name: String) -> ([Int32]) -> [Int32: String] {
+    { pids in Dictionary(uniqueKeysWithValues: pids.map { ($0, name) }) }
+}
+
+func temporaryAgentsDirectory() throws -> URL {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("MachinePulseAgents-\(UUID().uuidString)", isDirectory: true)
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

@@ -1,10 +1,19 @@
 {
   "name": "machinepulse-agents",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Tells MachinePulse when a Claude Code session finishes or needs approval, on any machine it monitors.",
-  "author": { "name": "David Weiszfeld", "url": "https://github.com/weiszfelddavid" },
+  "author": {
+    "name": "David Weiszfeld",
+    "url": "https://github.com/weiszfelddavid"
+  },
   "homepage": "https://github.com/weiszfelddavid/machinepulse",
   "repository": "https://github.com/weiszfelddavid/machinepulse",
   "license": "MIT",
-  "keywords": ["machinepulse", "notifications", "hooks", "tailscale"]
+  "keywords": [
+    "machinepulse",
+    "notifications",
+    "hooks",
+    "tailscale"
+  ],
+  "hooks": "./hooks/claude.json"
 }

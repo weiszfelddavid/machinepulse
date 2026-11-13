@@ -19,6 +19,7 @@ import Testing
         #expect(started.turnStartedAt == 0)
         #expect(started.agent == "claude")
         #expect(started.pid == Int(hook.agentPID))
+        #expect(started.process == "claude")
         #expect(started.tty == "ttys004")
         #expect(started.cwd == "/work/say \"hi\"")
         #expect(started.transcript == "/home/example/.claude/projects/example/session.jsonl")
@@ -35,7 +36,9 @@ import Testing
         #expect(waiting.turnStartedAt == turnStartedAt)
 
         let session = try #require(
-            AgentSessionReader.read(directory: hook.agentsDirectory, processName: { _ in "claude" }).first)
+            await AgentSessionReader.read(
+                directory: hook.agentsDirectory, processNames: { pids in [pids[0]: "claude"] }
+            ).first)
         #expect(session.state == .waiting)
         #expect(session.cwd == "/work/say \"hi\"")
         #expect(session.projectName == "say \"hi\"")
@@ -87,6 +90,7 @@ import Testing
     @Test(arguments: shells) func codexIsRecognizedAndTerminalIdentityIsKept(shell: String) async throws {
         let hook = try HookFixture(
             shell: shell,
+            agent: "codex",
             agentName: "/opt/example/bin/codex",
             environment: [
                 "SSH_CONNECTION": "100.64.0.2 51234 100.64.0.9 22",
@@ -98,12 +102,32 @@ import Testing
         defer { hook.remove() }
 
         try await hook.run("prompt")
-        let record = try #require(try hook.record(agent: "codex"))
+        let record = try #require(try hook.record())
         #expect(record.agent == "codex")
+        #expect(record.process == "codex")
         #expect(record.sshPort == 51_234)
         #expect(record.terminal == "Apple_Terminal")
         #expect(record.terminalSession == "0BADC0DE-0000-4000-8000-000000000002")
         #expect(record.tmuxPane == "%3")
+    }
+
+    @Test(arguments: shells) func theAgentIsTheFirstAncestorThatIsNotAShell(shell: String) async throws {
+        let hook = try HookFixture(
+            shell: shell, agentName: "/home/example/.local/share/claude/versions/2.1.323", agentPID: 4_242)
+        defer { hook.remove() }
+
+        try await hook.run("prompt")
+        let record = try #require(try hook.record())
+        #expect(record.pid == 4_242)
+        #expect(record.process == "2.1.323")
+    }
+
+    @Test(arguments: shells) func anUnknownAgentLeavesNoFile(shell: String) async throws {
+        let hook = try HookFixture(shell: shell, agent: "gemini")
+        defer { hook.remove() }
+
+        try await hook.run("prompt")
+        #expect(!FileManager.default.fileExists(atPath: hook.agentsDirectory.path))
     }
 
     @Test(arguments: shells) func startRemovesFilesOfAgentsThatAreGone(shell: String) async throws {
@@ -131,16 +155,26 @@ import Testing
 
 private struct HookFixture {
     let shell: String
+    let agent: String
     let workspace: URL
-    let agentPID = ProcessInfo.processInfo.processIdentifier
+    let agentPID: Int32
     let environment: [String: String]
 
     var agentsDirectory: URL { workspace.appendingPathComponent("state/machinepulse/agents", isDirectory: true) }
 
-    init(shell: String, tty: String = "ttys004", agentName: String = "claude", environment: [String: String] = [:])
-        throws
-    {
+    /// By default the test process is the agent; another `agentPID` puts a
+    /// shell between the hook and the agent.
+    init(
+        shell: String,
+        agent: String = "claude",
+        tty: String = "ttys004",
+        agentName: String = "claude",
+        agentPID: Int32 = ProcessInfo.processInfo.processIdentifier,
+        environment: [String: String] = [:]
+    ) throws {
         self.shell = shell
+        self.agent = agent
+        self.agentPID = agentPID
         workspace = FileManager.default.temporaryDirectory
             .appendingPathComponent("MachinePulseHook-\(UUID().uuidString)", isDirectory: true)
         let bin = workspace.appendingPathComponent("bin", isDirectory: true)
@@ -152,7 +186,7 @@ private struct HookFixture {
         values["PATH"] = "\(bin.path):/usr/bin:/bin"
         values["HOME"] = workspace.path
         values["XDG_STATE_HOME"] = workspace.appendingPathComponent("state").path
-        values["FAKE_AGENT_PID"] = String(ProcessInfo.processInfo.processIdentifier)
+        values["FAKE_AGENT_PID"] = String(agentPID)
         values["FAKE_AGENT_NAME"] = agentName
         values["FAKE_TTY"] = tty
         self.environment = values
@@ -166,7 +200,7 @@ private struct HookFixture {
             """
         let result = try await CommandRunner.run(
             executable: shell,
-            arguments: [Self.scriptURL.path, event],
+            arguments: [Self.scriptURL.path, agent, event],
             standardInput: Data(input.utf8),
             environment: environment,
             timeout: 10
@@ -174,7 +208,7 @@ private struct HookFixture {
         return result.outputString
     }
 
-    func record(agent: String = "claude") throws -> HookRecord? {
+    func record() throws -> HookRecord? {
         let url = agentsDirectory.appendingPathComponent("\(agent)-\(agentPID).json")
         guard let data = FileManager.default.contents(atPath: url.path) else { return nil }
         return try JSONDecoder().decode(HookRecord.self, from: data)
@@ -217,6 +251,7 @@ private struct HookRecord: Decodable {
     let version: Int
     let agent: String
     let pid: Int
+    let process: String
     let state: String
     let since: Int
     let turnStartedAt: Int?

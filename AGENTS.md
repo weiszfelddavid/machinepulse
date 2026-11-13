@@ -61,7 +61,7 @@ xcodegen generate                           # after editing project.yml; commit 
 | polling lifecycle, preferences, actions | `Sources/MachinePulseApp/App/AppModel.swift` |
 | a screen or a card | `Sources/MachinePulseApp/Views/` |
 | display policy | `Sources/MachinePulseCore/LocalControls/`; adapters in `Sources/MachinePulseApp/Display/` |
-| what the agent hook records | `plugins/machinepulse-agents/scripts/agent-state`, hooks in `plugins/machinepulse-agents/hooks/hooks.json` |
+| what the agent hook records | `plugins/machinepulse-agents/scripts/agent-state`, hooks in `plugins/machinepulse-agents/hooks/claude.json` and `codex.json` |
 | agent session rules, when a session waits for you, bubble growth | `Sources/MachinePulseCore/Agents/`; the collector's `agent_sessions` must keep the same rules |
 | the waiting-agent bubble | `Sources/MachinePulseApp/App/AgentBubble.swift` |
 | opening a session's terminal | `Sources/MachinePulseApp/App/TerminalFocus.swift` |

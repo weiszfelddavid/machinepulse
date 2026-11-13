@@ -751,50 +751,50 @@ struct CollectorContractTests {
 
     @Test func readsAgentSessionsWithTheSameRulesAsThisMac() async throws {
         let table: [[String: Any]] = [
-            ["pid": 101, "name": "claude"], ["pid": 102, "name": "codex"], ["pid": 103, "name": "python3"],
-            ["pid": 105, "name": "node"], ["pid": 301, "name": "claude"], ["pid": 302, "name": "claude"],
+            ["pid": 101, "name": "claude"], ["pid": 102, "name": "/opt/example/bin/codex"],
+            ["pid": 103, "name": "python3"], ["pid": 105, "name": "2.1.323"],
+            ["pid": 301, "name": "claude"], ["pid": 302, "name": "claude"],
         ]
         let names = Dictionary(
             uniqueKeysWithValues: table.map { (Int32($0["pid"] as! Int), $0["name"] as! String) })
-        nonisolated(unsafe) var swiftSessions: [AgentSessionMetric] = []
+        let agents = try temporaryAgentsDirectory()
+        defer { try? FileManager.default.removeItem(at: agents) }
+        var records = [
+            record(agent: "claude", pid: 101, state: "working", since: 1_000),
+            record(agent: "codex", pid: 102, state: "waiting", since: 2_000, turnStartedAt: 1_900),
+            record(agent: "claude", pid: 103, state: "idle", since: 3_000),
+            record(agent: "claude", pid: 104, state: "idle", since: 4_000),
+            record(agent: "claude", pid: 105, state: "idle", since: 5_000, process: "2.1.323"),
+            record(agent: "claude", pid: 301, state: "approval", since: 1_000),
+            record(agent: "claude", pid: 302, state: "approval", since: 1_000),
+        ]
+        for (index, offset) in [(5, 10.0), (6, 1.0)] {
+            let transcript = agents.appendingPathComponent("\(index).jsonl")
+            try Data().write(to: transcript)
+            try FileManager.default.setAttributes(
+                [.modificationDate: Date(timeIntervalSince1970: 1_000 + offset)],
+                ofItemAtPath: transcript.path
+            )
+            records[index]["transcript"] = transcript.path
+        }
+        var future = record(agent: "claude", pid: 101, state: "working", since: 9_000)
+        future["version"] = 2
+        for (name, value) in records.map({ ("\($0["agent"]!)-\($0["pid"]!).json", $0) })
+            + [("claude-999.json", future)]
+        {
+            try JSONSerialization.data(withJSONObject: value).write(to: agents.appendingPathComponent(name))
+        }
+        try Data("{not json".utf8).write(to: agents.appendingPathComponent("claude-998.json"))
+
         let output: AgentSessionsDriverOutput = try await runCollectorMode(
             "agent-sessions",
             environment: ["MACHINEPULSE_FAKE_PROCESS_TABLE": try jsonString(table)],
             prepare: { workspace in
-                let agents = workspace.appendingPathComponent("agents", isDirectory: true)
-                let transcripts = workspace.appendingPathComponent("transcripts", isDirectory: true)
-                for directory in [agents, transcripts] {
-                    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-                }
-                var records = [
-                    record(agent: "claude", pid: 101, state: "working", since: 1_000),
-                    record(agent: "codex", pid: 102, state: "waiting", since: 2_000, turnStartedAt: 1_900),
-                    record(agent: "claude", pid: 103, state: "idle", since: 3_000),
-                    record(agent: "claude", pid: 104, state: "idle", since: 4_000),
-                    record(agent: "claude", pid: 105, state: "idle", since: 5_000),
-                    record(agent: "claude", pid: 301, state: "approval", since: 1_000),
-                    record(agent: "claude", pid: 302, state: "approval", since: 1_000),
-                ]
-                for (index, offset) in [(5, 10.0), (6, 1.0)] {
-                    let transcript = transcripts.appendingPathComponent("\(index).jsonl")
-                    try Data().write(to: transcript)
-                    try FileManager.default.setAttributes(
-                        [.modificationDate: Date(timeIntervalSince1970: 1_000 + offset)],
-                        ofItemAtPath: transcript.path
-                    )
-                    records[index]["transcript"] = transcript.path
-                }
-                var future = record(agent: "claude", pid: 101, state: "working", since: 9_000)
-                future["version"] = 2
-                for (name, value) in records.map({ ("\($0["agent"]!)-\($0["pid"]!).json", $0) })
-                    + [("claude-999.json", future)]
-                {
-                    try JSONSerialization.data(withJSONObject: value).write(to: agents.appendingPathComponent(name))
-                }
-                try Data("{not json".utf8).write(to: agents.appendingPathComponent("claude-998.json"))
-                swiftSessions = AgentSessionReader.read(directory: agents, processName: { names[$0] })
+                try FileManager.default.createSymbolicLink(
+                    at: workspace.appendingPathComponent("agents"), withDestinationURL: agents)
             }
         )
+        let swiftSessions = await AgentSessionReader.read(directory: agents, processNames: { _ in names })
 
         #expect(output.sessions.map(\.id) == ["claude-105", "codex-102", "claude-101", "claude-301", "claude-302"])
         #expect(output.sessions.first { $0.pid == 301 }?.state == .working)

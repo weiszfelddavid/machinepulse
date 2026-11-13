@@ -57,7 +57,7 @@ Scenarios: `empty`, `loading`, `healthy`, `warning`, `critical`, `clearing`, `re
 
 `swift test --filter <Suite>` runs one suite. `CollectorContractTests` extract the Python program from the shipped `collector.sh`, import it, and run it against injected `ps`, `ss`, `systemctl`, journal, cgroup, `sysctl`, `vm_stat`, `netstat`, and `ioreg` output and a real temporary tree for the disk scan, so they never read a live machine. `DiskUsageTests` drive the scan engine with synthetic trees and the real `fts` scanner with a temporary tree that has a hardlink, a symlink, and an unreadable directory. Migration tests use temporary databases. `AgentStateHookTests` run the real plugin hook under `sh` and `dash` with a fake `ps`; `CollectorContractTests` check that the collector and `AgentSessionReader` read the same agent files the same way.
 
-To try the plugin on a real session without installing it, load it for one run: `claude --plugin-dir plugins/machinepulse-agents`. `claude plugin validate plugins/machinepulse-agents` checks the manifest and the hooks; its warning about `Interrupt` is expected, because only Codex sends that event.
+To try the plugin on a real session without installing it, load it for one run: `claude --plugin-dir plugins/machinepulse-agents`. `claude plugin validate plugins/machinepulse-agents` checks the manifest and the hooks. Each agent has its own hooks file, because each calls the script with its own name and only Codex sends `Interrupt`.
 
 ## Releasing
 

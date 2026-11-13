@@ -1,4 +1,3 @@
-import Darwin
 import Foundation
 
 /// Reads the agent session files on this Mac with the same rules that the
@@ -20,19 +19,23 @@ public enum AgentSessionReader {
 
     public static func read(
         directory: URL = defaultDirectory,
-        processName: (Int32) -> String? = processName(of:),
+        processNames: ([Int32]) async -> [Int32: String] = processNames(of:),
         modificationDate: (String) -> Date? = modificationDate(ofPath:)
-    ) -> [AgentSessionMetric] {
+    ) async -> [AgentSessionMetric] {
         guard let names = try? FileManager.default.contentsOfDirectory(atPath: directory.path) else { return [] }
-        let sessions = names.filter { $0.hasSuffix(".json") }.compactMap { name -> AgentSessionMetric? in
+        let records = names.filter { $0.hasSuffix(".json") }.compactMap { name -> AgentStateRecord? in
             let path = directory.appendingPathComponent(name).path
             guard
                 let size = (try? FileManager.default.attributesOfItem(atPath: path))?[.size] as? Int,
                 size <= maximumStateBytes,
-                let data = FileManager.default.contents(atPath: path),
-                let record = try? JSONDecoder().decode(AgentStateRecord.self, from: data)
+                let data = FileManager.default.contents(atPath: path)
             else { return nil }
-            return session(from: record, processName: processName, modificationDate: modificationDate)
+            return try? JSONDecoder().decode(AgentStateRecord.self, from: data)
+        }
+        guard !records.isEmpty else { return [] }
+        let running = await processNames(records.compactMap { $0.pid.flatMap(Int32.init(exactly:)) })
+        let sessions = records.compactMap {
+            session(from: $0, processName: { running[$0] }, modificationDate: modificationDate)
         }
         return Array(
             sessions.sorted {
@@ -51,8 +54,8 @@ public enum AgentSessionReader {
             let pid = record.pid.flatMap(Int32.init(exactly:)), pid > 0,
             var state = record.state.flatMap(AgentSessionState.init(rawValue:)),
             let since = record.since, since > 0,
-            let name = processName(pid).map({ ($0 as NSString).lastPathComponent }),
-            acceptedProcessNames(for: agent).contains(name)
+            let process = text(record.process, maximum: 64),
+            processName(pid).map({ ($0 as NSString).lastPathComponent }) == process
         else { return nil }
         let sinceDate = Date(timeIntervalSince1970: TimeInterval(since))
         // A session blocked on approval writes nothing; a transcript that
@@ -80,19 +83,26 @@ public enum AgentSessionReader {
         )
     }
 
-    /// Claude Code installed with npm runs as node.
-    static func acceptedProcessNames(for agent: AgentKind) -> Set<String> {
-        switch agent {
-        case .claude: ["claude", "node"]
-        case .codex: ["codex"]
+    /// The names `ps` shows, as the hook recorded them; `proc_name` differs
+    /// for a binary named after its version. The whole table is listed
+    /// because `ps -p` fails as soon as one of the processes has exited.
+    public static func processNames(of pids: [Int32]) async -> [Int32: String] {
+        let wanted = Set(pids)
+        guard
+            !wanted.isEmpty,
+            let result = try? await CommandRunner.run(
+                executable: "/bin/ps",
+                arguments: ["-A", "-o", "pid=", "-o", "comm="],
+                timeout: 5
+            )
+        else { return [:] }
+        var names: [Int32: String] = [:]
+        for line in result.outputString.split(whereSeparator: \.isNewline) {
+            let fields = line.split(maxSplits: 1, whereSeparator: \.isWhitespace)
+            guard fields.count == 2, let pid = Int32(fields[0]), wanted.contains(pid) else { continue }
+            names[pid] = fields[1].trimmingCharacters(in: .whitespaces)
         }
-    }
-
-    public static func processName(of pid: Int32) -> String? {
-        var buffer = [UInt8](repeating: 0, count: 2 * Int(MAXCOMLEN) + 1)
-        let length = proc_name(pid, &buffer, UInt32(buffer.count))
-        guard length > 0 else { return nil }
-        return String(decoding: buffer.prefix(Int(length)), as: UTF8.self)
+        return names
     }
 
     public static func modificationDate(ofPath path: String) -> Date? {
@@ -111,6 +121,7 @@ struct AgentStateRecord: Decodable {
     var version: Int?
     var agent: String?
     var pid: Int?
+    var process: String?
     var state: String?
     var since: Int?
     var turnStartedAt: Int?
@@ -123,7 +134,7 @@ struct AgentStateRecord: Decodable {
     var sshPort: Int?
 
     private enum CodingKeys: String, CodingKey {
-        case version, agent, pid, state, since, turnStartedAt, cwd, transcript, tty, terminal, terminalSession,
+        case version, agent, pid, process, state, since, turnStartedAt, cwd, transcript, tty, terminal, terminalSession,
             tmuxPane, sshPort
     }
 
@@ -132,6 +143,7 @@ struct AgentStateRecord: Decodable {
         version = try? container.decode(Int.self, forKey: .version)
         agent = try? container.decode(String.self, forKey: .agent)
         pid = try? container.decode(Int.self, forKey: .pid)
+        process = try? container.decode(String.self, forKey: .process)
         state = try? container.decode(String.self, forKey: .state)
         since = try? container.decode(Int.self, forKey: .since)
         turnStartedAt = try? container.decode(Int.self, forKey: .turnStartedAt)

@@ -61,7 +61,7 @@ public actor LocalMacMetricSource: MetricSource {
             collectorVersion: "mac-native-v1",
             rootFilesystemID: disk.identity
         )
-        return MetricCollection(sample: sample, agentSessions: AgentSessionReader.read())
+        return MetricCollection(sample: sample, agentSessions: await AgentSessionReader.read())
     }
 
     private func readCPU() -> CPUTicks {

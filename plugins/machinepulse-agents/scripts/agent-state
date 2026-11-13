@@ -2,7 +2,7 @@
 # Records the state of one interactive Claude Code or Codex session so that
 # MachinePulse can list it and say when it waits for you.
 #
-#   agent-state <start|prompt|approval|stop|idle|end>
+#   agent-state <claude|codex> <start|prompt|approval|stop|idle|end>
 #
 # One file per agent process, ${XDG_STATE_HOME:-~/.local/state}/machinepulse/
 # agents/<agent>-<pid>.json, replaced on every event and removed at the end.
@@ -10,23 +10,27 @@
 # exits 0: both agents read hook output as instructions, and a Stop hook that
 # exits 2 keeps the agent working.
 
-event=${1:-}
+agent=${1:-}
+event=${2:-}
 input=$(cat)
 umask 077
+case $agent in claude | codex) ;; *) exit 0 ;; esac
 
 directory=${XDG_STATE_HOME:-$HOME/.local/state}/machinepulse/agents
 
-# The hook runs under a shell that the agent starts; the agent is the nearest
-# ancestor named claude or codex. Claude Code installed with npm runs as node.
-pid= agent= candidate=$PPID depth=0
+# The agent is the nearest ancestor that is not a shell. Its name is kept as
+# `ps` shows it, because the binary can be named after its version
+# (Claude Code's native build is .../versions/2.1.323).
+pid= process= candidate=$PPID depth=0
 while [ "$depth" -lt 6 ] && [ "${candidate:-0}" -gt 1 ]; do
     line=$(ps -o ppid= -o comm= -p "$candidate" 2>/dev/null) || break
     read -r parent name <<EOF
 $line
 EOF
-    case ${name##*/} in
-        claude | node) pid=$candidate agent=claude ;;
-        codex) pid=$candidate agent=codex ;;
+    name=${name##*/}
+    case ${name#-} in
+        sh | bash | zsh | dash | ksh | fish) ;;
+        *) pid=$candidate process=$name ;;
     esac
     [ -n "$pid" ] && break
     candidate=$parent depth=$((depth + 1))
@@ -102,8 +106,8 @@ if [ "$event" = start ]; then
     done
 fi
 
-printf '{"version":1,"agent":"%s","pid":%s,"state":"%s","since":%s,"turnStartedAt":%s,"cwd":"%s","transcript":"%s","tty":"%s","terminal":"%s","terminalSession":"%s","tmuxPane":"%s","sshPort":%s}\n' \
-    "$agent" "$pid" "$state" "$now" "$turn" "$cwd" "$transcript" "$(identifier "$tty")" \
+printf '{"version":1,"agent":"%s","pid":%s,"process":"%s","state":"%s","since":%s,"turnStartedAt":%s,"cwd":"%s","transcript":"%s","tty":"%s","terminal":"%s","terminalSession":"%s","tmuxPane":"%s","sshPort":%s}\n' \
+    "$agent" "$pid" "$(identifier "$process")" "$state" "$now" "$turn" "$cwd" "$transcript" "$(identifier "$tty")" \
     "$(identifier "${TERM_PROGRAM:-}")" "$(identifier "${ITERM_SESSION_ID:-${TERM_SESSION_ID:-}}")" \
     "$(identifier "${TMUX_PANE:-}")" "$ssh_port" >"$file.$$" && mv -f "$file.$$" "$file"
 exit 0
