@@ -22,6 +22,7 @@
             case diskGrowth = "disk-growth"
             case expectedUnit = "expected-unit"
             case servers
+            case agents
         }
 
         static func previewDisplayController() -> SystemLocalDisplayController {
@@ -294,6 +295,49 @@
             ]
         }
 
+        static func previewAgentSessions(now: Date) -> [AgentSessionMetric] {
+            [
+                AgentSessionMetric(
+                    agent: .claude,
+                    pid: 41_001,
+                    state: .approval,
+                    since: now.addingTimeInterval(-40),
+                    turnStartedAt: now.addingTimeInterval(-300),
+                    cwd: "/home/example/code/billing-api",
+                    tty: "pts/1",
+                    sshPort: 50_001
+                ),
+                AgentSessionMetric(
+                    agent: .codex,
+                    pid: 41_002,
+                    state: .waiting,
+                    since: now.addingTimeInterval(-150),
+                    turnStartedAt: now.addingTimeInterval(-530),
+                    cwd: "/home/example/code/storefront",
+                    tty: "pts/2",
+                    sshPort: 50_002
+                ),
+                AgentSessionMetric(
+                    agent: .claude,
+                    pid: 41_003,
+                    state: .working,
+                    since: now.addingTimeInterval(-720),
+                    turnStartedAt: now.addingTimeInterval(-720),
+                    cwd: "/home/example/code/docs-site",
+                    tty: "pts/3",
+                    sshPort: 50_003
+                ),
+                AgentSessionMetric(
+                    agent: .codex,
+                    pid: 41_004,
+                    state: .idle,
+                    since: now.addingTimeInterval(-3_600),
+                    cwd: "/home/example/code/data-import",
+                    tty: "pts/4"
+                ),
+            ]
+        }
+
         func applyPreviewScenario(_ scenario: PreviewScenario) {
             let now = Date()
             guard scenario != .empty else {
@@ -375,6 +419,12 @@
                 )
             }
             lastRefresh = now
+            if scenario == .agents {
+                let sessions = Self.previewAgentSessions(now: now)
+                agentSessions[device.id] = sessions
+                waitingAgents = sessions.compactMap { AgentAttention(deviceID: device.id, session: $0) }
+                showWaitingAgents()
+            }
 
             if scenario == .loading { return }
 
@@ -487,7 +537,7 @@
             capacityRollups[device.id] = CapacityRollupBuilder.build(samples: history)
 
             switch scenario {
-            case .healthy, .servers, .diskGrowth:
+            case .healthy, .servers, .diskGrowth, .agents:
                 reports[device.id] = HealthReport(
                     deviceID: device.id,
                     state: .healthy,

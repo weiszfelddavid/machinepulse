@@ -238,7 +238,10 @@ struct PulsePopover: View {
                     && model.localDisplayControls.preferences.showsControls
             }
         case .workloads:
-            sortedDevices.filter { model.preferences[$0.id]?.isEnabled == true && model.supportsWorkloads($0) }
+            sortedDevices.filter {
+                model.preferences[$0.id]?.isEnabled == true
+                    && (model.supportsWorkloads($0) || model.supportsAgentSessions($0))
+            }
         case .storage:
             sortedDevices.filter {
                 model.preferences[$0.id]?.isEnabled == true && model.supportsStorage($0)

@@ -25,11 +25,12 @@ plutil -replace LSMinimumSystemVersion -string 15.0 "$STAGED_APP/Contents/Info.p
 plutil -extract CFBundleVersion raw -expect string "$STAGED_APP/Contents/Info.plist" >/dev/null
 plutil -extract CFBundleShortVersionString raw -expect string "$STAGED_APP/Contents/Info.plist" >/dev/null
 
+ENTITLEMENTS="$PROJECT_DIRECTORY/Config/MachinePulse.entitlements"
 if [ -n "${MACHINEPULSE_CODESIGN_IDENTITY:-}" ]; then
-    codesign --force --deep --options runtime --timestamp \
+    codesign --force --deep --options runtime --timestamp --entitlements "$ENTITLEMENTS" \
         --sign "$MACHINEPULSE_CODESIGN_IDENTITY" "$STAGED_APP"
 else
-    codesign --force --deep --sign - "$STAGED_APP"
+    codesign --force --deep --entitlements "$ENTITLEMENTS" --sign - "$STAGED_APP"
 fi
 mkdir -p "$OUTPUT_DIRECTORY"
 rm -rf "$OUTPUT_DIRECTORY/MachinePulse.app"

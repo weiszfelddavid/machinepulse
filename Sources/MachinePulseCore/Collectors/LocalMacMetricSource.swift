@@ -11,7 +11,7 @@ public actor LocalMacMetricSource: MetricSource {
         self.deviceID = deviceID
     }
 
-    public func collect() async throws -> MetricSample {
+    public func collect() async throws -> MetricCollection {
         let now = Date()
         let cpu = readCPU()
         let cpuPercent = utilization(current: cpu, previous: previousCPU)
@@ -35,7 +35,7 @@ public actor LocalMacMetricSource: MetricSource {
         _ = getloadavg(&loads, Int32(loads.count))
         let processes = await readProcesses()
 
-        return MetricSample(
+        let sample = MetricSample(
             deviceID: deviceID,
             timestamp: now,
             hostname: ProcessInfo.processInfo.hostName,
@@ -61,6 +61,7 @@ public actor LocalMacMetricSource: MetricSource {
             collectorVersion: "mac-native-v1",
             rootFilesystemID: disk.identity
         )
+        return MetricCollection(sample: sample, agentSessions: await AgentSessionReader.read())
     }
 
     private func readCPU() -> CPUTicks {

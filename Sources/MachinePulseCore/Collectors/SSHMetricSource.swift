@@ -21,7 +21,7 @@ public actor SSHMetricSource: MetricSource {
         self.expectedUnits = Array(expectedUnits.prefix(ExpectedSystemdUnit.maxWatchlistCount))
     }
 
-    public func collect() async throws -> MetricSample {
+    public func collect() async throws -> MetricCollection {
         let output = try await SSHTransport.run(
             target: target,
             input: collectorInput(),
@@ -43,7 +43,7 @@ public actor SSHMetricSource: MetricSource {
         previousSnapshot = snapshot
         previousOOMContext = oom
 
-        return MetricSample(
+        let sample = MetricSample(
             deviceID: deviceID,
             timestamp: snapshot.timestamp,
             hostname: snapshot.hostname,
@@ -84,6 +84,7 @@ public actor SSHMetricSource: MetricSource {
             collectorVersion: snapshot.collectorVersion,
             rootFilesystemID: snapshot.rootFilesystemID
         )
+        return MetricCollection(sample: sample, agentSessions: snapshot.agentSessions ?? [])
     }
 
     /// Journal evidence is reused while the remote kernel's OOM kill counter

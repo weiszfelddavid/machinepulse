@@ -1,0 +1,30 @@
+{
+  "name": "machinepulse-agents",
+  "version": "0.6.1",
+  "description": "Tells MachinePulse when a Codex session finishes or needs approval, on any machine it monitors.",
+  "author": {
+    "name": "David Weiszfeld",
+    "url": "https://github.com/weiszfelddavid"
+  },
+  "homepage": "https://github.com/weiszfelddavid/machinepulse",
+  "repository": "https://github.com/weiszfelddavid/machinepulse",
+  "license": "MIT",
+  "keywords": [
+    "machinepulse",
+    "notifications",
+    "hooks",
+    "tailscale"
+  ],
+  "hooks": "./hooks/codex.json",
+  "interface": {
+    "displayName": "MachinePulse Agents",
+    "shortDescription": "Session state for the MachinePulse menu-bar app",
+    "longDescription": "Writes one small state file per interactive Codex session so that MachinePulse can list the session and notify you when it finishes or needs approval. It stores no prompt or answer text.",
+    "developerName": "David Weiszfeld",
+    "category": "Productivity",
+    "capabilities": [
+      "Hooks"
+    ],
+    "websiteURL": "https://github.com/weiszfelddavid/machinepulse"
+  }
+}

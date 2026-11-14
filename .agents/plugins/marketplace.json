@@ -1,0 +1,12 @@
+{
+  "name": "machinepulse",
+  "interface": { "displayName": "MachinePulse" },
+  "plugins": [
+    {
+      "name": "machinepulse-agents",
+      "source": { "source": "local", "path": "./plugins/machinepulse-agents" },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "category": "Productivity"
+    }
+  ]
+}

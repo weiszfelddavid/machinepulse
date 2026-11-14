@@ -171,10 +171,13 @@ struct DeviceDetails: View {
                 overview
             } else if selectedSection == .vitals {
                 vitals
-            } else if model.supportsWorkloads(device), selectedSection == .workloads {
+            } else if selectedSection == .workloads {
+                if model.supportsAgentSessions(device) {
+                    AgentSessionsSection(model: model, device: device)
+                }
                 if device.isLocal {
                     RunningServersSection(model: model)
-                } else {
+                } else if model.supportsWorkloads(device) {
                     RemoteWorkloadsSection(
                         device: device,
                         sample: sample,

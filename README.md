@@ -6,6 +6,8 @@ A macOS menu-bar monitor for the machines on your tailnet. It leads with the inc
 
 MachinePulse reads what the systems you already trust expose: Tailscale for who is on the tailnet and reachable, OpenSSH for a Linux machine or another Mac, the kernel and system tools on each side. It has no agent, nothing to install on the other machines, no account, no server, and stores nothing off your Mac.
 
+It can also tell you when a Claude Code or Codex session on any of these machines finishes or needs approval. That part is optional and needs a small plugin in the coding agent; see [Agent sessions](#agent-sessions).
+
 ## Install
 
 Build it yourself; there is no prebuilt app.
@@ -30,7 +32,7 @@ The panel has five projections of the same machine cards:
 - **Overview** — health now, the active or just-recovered incident, current readings, and hand-offs to the sections below.
 - **Vitals** — a 15-minute chart, process leaders, and up to 90 days of hourly capacity history.
 - **Displays** — optional XDR Boost for this Mac's compatible displays, off by default.
-- **Workloads** — project servers listening on this Mac; systemd services, listeners, and cgroup limits on a Linux machine.
+- **Workloads** — Claude Code and Codex sessions on any machine with the agents plugin; project servers listening on this Mac; systemd services, listeners, and cgroup limits on a Linux machine.
 - **Storage** — press **Scan** and a treemap shows where the disk space went, with reclaimable space hatched and a **Worth a look** list.
 
 <p>
@@ -39,6 +41,26 @@ The panel has five projections of the same machine cards:
 </p>
 
 A warning needs two matching samples; a critical reading shows at once. Recovery waits for clear samples, and Linux pressure waits through a two-minute quiet window so a brief recurrence stays one incident. **Unreachable** means Tailscale reports the machine offline; a collection problem on an online machine is a separate warning that keeps the last good sample on screen. Phones and tablets that go offline stay quiet.
+
+## Agent sessions
+
+Install the `machinepulse-agents` plugin on each machine where you run Claude Code or Codex, the Mac included:
+
+```sh
+claude plugin marketplace add weiszfelddavid/machinepulse
+claude plugin install machinepulse-agents@machinepulse
+
+codex plugin marketplace add weiszfelddavid/machinepulse
+codex plugin add machinepulse-agents@machinepulse
+```
+
+The plugin is one POSIX `sh` hook. It writes one small file for each interactive session to `~/.local/state/machinepulse/agents/`, and MachinePulse reads it on its usual ten-second pass. The machine must be monitored with **Full metrics**.
+
+- **Workloads** lists each session with its project and state: working, needs approval, finished, or idle.
+- A bubble rises from the bottom center of each display when a task of 30 seconds or more finishes, and at once when a session needs approval. It has the opposite colors of the system appearance and grows one step a minute for ten minutes while the agent waits. It stays until you open the session, press ×, or the agent works again. Hover over it to see the folder, the task length, and the other sessions that wait. Turn it off in Settings.
+- A click on the bubble or the row opens the session's terminal. On this Mac it selects the exact Terminal or iTerm2 tab and brings any other terminal app to the front. For a remote machine, it finds the `ssh` connection from this Mac that the session runs in and selects that tab. macOS asks once for each terminal app (Automation).
+
+Limits: a session without a terminal (`claude -p`, `codex exec`) is not listed. A session inside tmux on a remote machine is listed, but the click finds its tab only if you did not reattach through a new SSH connection. With OpenSSH `ControlMaster`, all sessions to one host share one connection, so the click opens the tab that opened that connection.
 
 ## What it measures
 
@@ -53,9 +75,9 @@ Detailed samples are kept one day, hourly capacity summaries 90 days, incidents 
 ## What it refuses to do
 
 - Run anything persistent on a remote machine. The collector is streamed to `sh` over SSH, returns one JSON document, and exits.
-- Read command lines, environments, file contents, or credentials anywhere.
+- Read command lines, environments, file contents, or credentials anywhere. The one exception is the state files that the optional agents plugin writes for MachinePulse.
 - Delete, trash, stop, or restart anything on a remote machine. The only mutating action is a confirmed, graceful stop of a project server you own on this Mac.
-- Ask for Screen Recording, Accessibility, or Input Monitoring. XDR Boost draws a uniform overlay and never reads pixels.
+- Ask for Screen Recording, Accessibility, or Input Monitoring. XDR Boost draws a uniform overlay and never reads pixels. Automation is asked only when you open an agent session, to select its tab in Terminal or iTerm2.
 - Send telemetry. Diagnostics are copied to the pasteboard only when you ask, and say so before you share them.
 
 ## Develop

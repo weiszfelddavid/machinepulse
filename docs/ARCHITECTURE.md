@@ -15,7 +15,7 @@ Tailscale status ──→ discovery ──→ per-device preferences
                                        │
                             IncidentStabilizer
                                        │
-                    AppModel → popover, SQLite, notifications
+                    AppModel → popover, SQLite, notifications, agent bubble
 ```
 
 ## Targets
@@ -36,6 +36,14 @@ A Linux machine or another Mac runs `ssh <target> sh -s` with `collector.sh` on 
 The Linux sample reads one `ps` table for both process leaders and cgroup candidates. It emits the kernel's cumulative `oom_kill` counter with the boot identity as a mark; while the app returns an unchanged mark, the journal is not read and the app reuses the OOM evidence it already holds, because the counter cannot stay equal across a new kill. Journal context, when read, is at most 256 matching current-boot rows reduced to time, victim, constraint, cgroup, and memory usage and limit.
 
 Remote workloads come from at most 128 listening TCP rows grouped by stable `.service` identity or bounded process evidence, merged with watched services, capped at 16 records with four listeners each. Resource controls resolve at most 16 cgroup paths from watched or listening services plus current top contributors, read only the named `memory.*`, `cpu.*`, `io.*`, and `pids.*` files below `/sys/fs/cgroup`, each capped at 8 KiB, and keep configured, unlimited, unsupported, and unavailable distinct.
+
+## Agent sessions
+
+The `machinepulse-agents` plugin in `plugins/` is one hook script for Claude Code and Codex, which share the plugin and hook format. Each agent calls the hook with its own name from its own hooks file. The hook takes the first process ancestor that is not a shell as the agent, keeps its name as `ps` shows it (Claude Code's native binary is named after its version), and writes `~/.local/state/machinepulse/agents/<agent>-<pid>.json`: the state (`idle`, `working`, `approval`, `waiting`), when it changed, when the turn started, and how to find the terminal. Claude Code reports idle a minute after any turn, so idle only ends a turn that had no Stop; Codex reports an interrupt the same way.
+
+The collector reads these files on Linux and macOS, and `AgentSessionReader` reads them natively on this Mac, with the same rules: version 1 only, a known agent and state, the process ID still running under the name the hook recorded, as `ps` shows it on both sides, 4 KiB per file, 16 sessions. A session in `approval` whose transcript changed after the request is working again; only the modification time is read. A collection returns a `MetricCollection`: the sample, and the sessions, which are never stored and never reach health.
+
+`AgentAttention` and `AgentAttentionTracker` are pure. A finished turn of 30 seconds or more, or an approval request, is one attention; each is announced once, the first collection of a machine only sets the baseline, and an attention stays until its session no longer waits for the same reason. `AgentBubble` in the app shows them in one non-activating panel per display at the bottom center, at status-bar level on all Spaces: the card is laid out at its peak size and scaled down so the text stays sharp, and a minute timeline from the oldest wait drives its growth. `TerminalFocus` in the app walks from the process to the first regular app, which is the terminal. For Terminal and iTerm2 it selects the tab with the session's terminal device through Apple Events. For a remote session, the process is the local `ssh` client whose source port matches the port in the session's `SSH_CONNECTION`.
 
 ## Health
 

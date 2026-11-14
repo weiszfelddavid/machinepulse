@@ -1,0 +1,15 @@
+{
+  "name": "machinepulse",
+  "owner": {
+    "name": "David Weiszfeld",
+    "url": "https://github.com/weiszfelddavid"
+  },
+  "description": "MachinePulse companion plugins.",
+  "plugins": [
+    {
+      "name": "machinepulse-agents",
+      "source": "./plugins/machinepulse-agents",
+      "description": "Tells MachinePulse when a Claude Code session finishes or needs approval."
+    }
+  ]
+}
