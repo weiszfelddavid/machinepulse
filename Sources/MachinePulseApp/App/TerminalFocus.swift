@@ -46,16 +46,26 @@ enum TerminalFocus {
         guard tty.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "/") }) else { return nil }
         let device = "/dev/\(tty)"
         switch bundleIdentifier {
+        // A Terminal tab whose processes ended keeps its tty name, which the
+        // next session can get again. The end of Terminal's activation can
+        // bring its last key window back in front after the window moved, so
+        // the move is checked and made again. The window goes by id because
+        // `targetWindow` is a position in the window order.
         case "com.apple.Terminal":
             return """
                 tell application id "com.apple.Terminal"
                     repeat with targetWindow in windows
                         repeat with targetTab in tabs of targetWindow
-                            if tty of targetTab is "\(device)" then
-                                set miniaturized of targetWindow to false
+                            if tty of targetTab is "\(device)" and processes of targetTab is not {} then
+                                set targetID to id of targetWindow
                                 set selected of targetTab to true
-                                set index of targetWindow to 1
                                 activate
+                                set miniaturized of window id targetID to false
+                                repeat 10 times
+                                    set index of window id targetID to 1
+                                    delay 0.1
+                                    if frontmost and index of window id targetID is 1 then exit repeat
+                                end repeat
                                 return true
                             end if
                         end repeat
