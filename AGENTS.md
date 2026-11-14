@@ -64,7 +64,7 @@ xcodegen generate                           # after editing project.yml; commit 
 | what the agent hook records | `plugins/machinepulse-agents/scripts/agent-state`, hooks in `plugins/machinepulse-agents/hooks/claude.json` and `codex.json` |
 | agent session rules, when a session waits for you, bubble growth | `Sources/MachinePulseCore/Agents/`; the collector's `agent_sessions` must keep the same rules |
 | the waiting-agent bubble | `Sources/MachinePulseApp/App/AgentBubble.swift` |
-| opening a session's terminal | `Sources/MachinePulseApp/App/TerminalFocus.swift` |
+| opening a session's terminal | `Sources/MachinePulseApp/App/TerminalFocus.swift`; the herdr window in `Sources/MachinePulseCore/Agents/HerdrClient.swift` |
 
 ## Verification expectations
 

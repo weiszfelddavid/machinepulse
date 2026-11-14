@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- herdr: a session in a herdr pane on this Mac opens that pane and brings the herdr window to the front. A session in herdr on another machine opens the `ssh` tab or the `herdr --remote` window. The plugin records the herdr pane and socket.
+- After a reattach to tmux or herdr through a new SSH connection, Open uses the only `ssh` tab to that machine.
+- README rewritten in plain English, with the agent sessions in the opening lines.
 - Docs: Codex runs the plugin's hooks only after you trust them at its **Hooks need review** prompt. Without this step, Codex sessions are not listed.
 
 ## 0.6.0 (39)

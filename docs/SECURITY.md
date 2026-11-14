@@ -6,7 +6,7 @@ MachinePulse has no login, identity, or credential store. Tailscale decides whic
 
 ## What is read
 
-On this Mac: kernel statistics, the volume, one `ps` table, the current user's TCP listeners and their working directories through `lsof` and `ps`, the agent state files described below, and, only when the user presses Scan, directory listings and `lstat` results below the home directory. When the user opens a remote agent session, one `lsof` finds the local `ssh` client by its source port.
+On this Mac: kernel statistics, the volume, one `ps` table, the current user's TCP listeners and their working directories through `lsof` and `ps`, the agent state files described below, and, only when the user presses Scan, directory listings and `lstat` results below the home directory. When the user opens a remote agent session, `lsof` finds the local `ssh` client by its source port, or else by the machine's address. When the user opens a session in herdr, one `ps` table with arguments finds the herdr window.
 
 On a remote machine, through a collector streamed to `sh` over SSH that writes no file and starts no process:
 
@@ -20,14 +20,14 @@ On a remote machine, through a collector streamed to `sh` over SSH that writes n
 - at most 16 agent state files of 4 KiB or less from `~/.local/state/machinepulse/agents`, and the modification time, never the content, of the transcript that a file names
 - on Scan: the home directory's entries on one filesystem, symlinks unfollowed, cloud-only folders unopened, keeping names, allocated sizes, counts, and last-write times of the largest entries four levels deep
 
-Never read, anywhere: command lines, environment variables, file contents other than the agent state files, credential paths, or a process's working directory on a remote machine.
+Never read, anywhere: environment variables, file contents other than the agent state files, or credential paths. Never read on a remote machine: command lines or a process's working directory. On this Mac, command lines are read only to identify project servers and herdr windows.
 
 ## The agents plugin
 
 The optional `machinepulse-agents` plugin runs inside Claude Code or Codex as a hook, never inside MachinePulse. It is one POSIX `sh` script in this repository.
 
 - It writes one file for each interactive session, `<agent>-<pid>.json`, with mode 0600 in a 0700 directory. It replaces the file on each event and removes it when the session ends. On a session start it also removes the files of agent processes that no longer exist.
-- The file holds the agent name, its process ID, process name as `ps` shows it, and terminal, the state and two timestamps, the working directory and transcript path from the hook input, `TERM_PROGRAM`, `TERM_SESSION_ID` or `ITERM_SESSION_ID`, `TMUX_PANE`, and the source port from `SSH_CONNECTION`. It never holds prompt or answer text.
+- The file holds the agent name, its process ID, process name as `ps` shows it, and terminal, the state and two timestamps, the working directory and transcript path from the hook input, `TERM_PROGRAM`, `TERM_SESSION_ID` or `ITERM_SESSION_ID`, `TMUX_PANE`, the source port from `SSH_CONNECTION`, and in herdr `HERDR_PANE_ID` and `HERDR_SOCKET_PATH`. It never holds prompt or answer text.
 - It reads its own process ancestors with `ps`: the agent is the first one that is not a shell. It prints nothing and always exits 0, because the agents read hook output as instructions.
 - A session without a terminal writes nothing.
 
@@ -41,6 +41,7 @@ Monitoring reveals operational metadata to the user of this Mac. Grant SSH acces
 - No listening server. Outbound work is the local Tailscale CLI and SSH to targets the user enabled.
 - No Screen Recording, Accessibility, Input Monitoring, camera, or microphone permission. The XDR overlay outputs a uniform colour and never reads pixels; screenshots can include it, and the UI says so.
 - Automation (Apple Events) is used only when the user opens an agent session: one script selects the tab with that terminal device in Terminal or iTerm2. macOS asks for each terminal app once.
+- When the user opens a session in herdr on this Mac, the app runs `herdr agent focus` with the user's own herdr to show that pane. It never does this for a remote machine.
 - No privilege escalation, daemon, LaunchAgent, or helper. Launch at login is the standard `SMAppService` login item, off until the user turns it on, visible and revocable in System Settings.
 
 The one mutating action is **Stop** on a project server owned by the current user on this Mac. It requires a second explicit confirmation, re-verifies UID, PID, start time, identity, project path, and port immediately before acting, sends `SIGTERM` only, and never `SIGKILL`.

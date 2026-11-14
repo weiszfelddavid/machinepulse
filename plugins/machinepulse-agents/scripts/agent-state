@@ -95,6 +95,12 @@ if [ -n "${SSH_CONNECTION:-}" ]; then
     case ${2:-} in '' | *[!0-9]*) ;; *) ssh_port=$2 ;; esac
 fi
 
+herdr_pane= herdr_socket=
+if [ "${HERDR_ENV:-}" = 1 ]; then
+    herdr_pane=${HERDR_PANE_ID:-}
+    herdr_socket=${HERDR_SOCKET_PATH:-}
+fi
+
 mkdir -p "$directory" 2>/dev/null || exit 0
 if [ "$event" = start ]; then
     for existing in "$directory"/*.json; do
@@ -106,8 +112,9 @@ if [ "$event" = start ]; then
     done
 fi
 
-printf '{"version":1,"agent":"%s","pid":%s,"process":"%s","state":"%s","since":%s,"turnStartedAt":%s,"cwd":"%s","transcript":"%s","tty":"%s","terminal":"%s","terminalSession":"%s","tmuxPane":"%s","sshPort":%s}\n' \
+printf '{"version":1,"agent":"%s","pid":%s,"process":"%s","state":"%s","since":%s,"turnStartedAt":%s,"cwd":"%s","transcript":"%s","tty":"%s","terminal":"%s","terminalSession":"%s","tmuxPane":"%s","sshPort":%s,"herdrPane":"%s","herdrSocket":"%s"}\n' \
     "$agent" "$pid" "$(identifier "$process")" "$state" "$now" "$turn" "$cwd" "$transcript" "$(identifier "$tty")" \
     "$(identifier "${TERM_PROGRAM:-}")" "$(identifier "${ITERM_SESSION_ID:-${TERM_SESSION_ID:-}}")" \
-    "$(identifier "${TMUX_PANE:-}")" "$ssh_port" >"$file.$$" && mv -f "$file.$$" "$file"
+    "$(identifier "${TMUX_PANE:-}")" "$ssh_port" "$(identifier "$herdr_pane")" "$(identifier "$herdr_socket")" \
+    >"$file.$$" && mv -f "$file.$$" "$file"
 exit 0

@@ -111,6 +111,27 @@ import Testing
         #expect(record.tmuxPane == "%3")
     }
 
+    @Test(arguments: shells) func aSessionInHerdrKeepsItsPaneAndSocket(shell: String) async throws {
+        let inside = try HookFixture(
+            shell: shell,
+            environment: [
+                "HERDR_ENV": "1", "HERDR_PANE_ID": "w1:p3",
+                "HERDR_SOCKET_PATH": "/home/example/.config/herdr/herdr.sock", "TERM_PROGRAM": "herdr",
+            ]
+        )
+        defer { inside.remove() }
+        try await inside.run("prompt")
+        let record = try #require(try inside.record())
+        #expect(record.herdrPane == "w1:p3")
+        #expect(record.herdrSocket == "/home/example/.config/herdr/herdr.sock")
+        #expect(record.terminal == "herdr")
+
+        let leftOver = try HookFixture(shell: shell, environment: ["HERDR_PANE_ID": "w1:p3"])
+        defer { leftOver.remove() }
+        try await leftOver.run("prompt")
+        #expect(try leftOver.record()?.herdrPane == "")
+    }
+
     @Test(arguments: shells) func theAgentIsTheFirstAncestorThatIsNotAShell(shell: String) async throws {
         let hook = try HookFixture(
             shell: shell, agentName: "/home/example/.local/share/claude/versions/2.1.323", agentPID: 4_242)
@@ -262,4 +283,6 @@ private struct HookRecord: Decodable {
     let terminalSession: String
     let tmuxPane: String
     let sshPort: Int?
+    let herdrPane: String
+    let herdrSocket: String
 }

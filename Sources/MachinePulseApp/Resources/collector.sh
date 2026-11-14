@@ -1148,6 +1148,8 @@ def parse_agent_session(record, names_by_pid, modified_time=os.path.getmtime):
         "terminalSession": agent_text(record.get("terminalSession"), 128),
         "tmuxPane": agent_text(record.get("tmuxPane"), 32),
         "sshPort": port if port is not None and port <= 65_535 else None,
+        "herdrPane": agent_text(record.get("herdrPane"), 32),
+        "herdrSocket": agent_text(record.get("herdrSocket"), 1_024),
     }
 
 
