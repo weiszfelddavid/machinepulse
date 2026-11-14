@@ -111,23 +111,30 @@ enum TerminalFocus {
             {
                 return application
             }
-            guard let info = processInfo(of: current) else { return nil }
-            current = Int32(bitPattern: info.pbi_ppid)
+            guard let parent = parent(of: current) else { return nil }
+            current = parent
             depth += 1
         }
         return nil
     }
 
-    private static func terminalDevice(of pid: Int32) -> String? {
-        guard let info = processInfo(of: pid), info.e_tdev != UInt32(bitPattern: -1) else { return nil }
-        guard let name = devname(dev_t(bitPattern: info.e_tdev), S_IFCHR) else { return nil }
-        return String(cString: name)
+    /// Reads the short record: the full one is refused for processes of other
+    /// users, such as the root `login` between a terminal and its shell.
+    private static func parent(of pid: Int32) -> Int32? {
+        var info = proc_bsdshortinfo()
+        let size = Int32(MemoryLayout<proc_bsdshortinfo>.size)
+        guard proc_pidinfo(pid, PROC_PIDT_SHORTBSDINFO, 0, &info, size) == size else { return nil }
+        return Int32(bitPattern: info.pbsi_ppid)
     }
 
-    private static func processInfo(of pid: Int32) -> proc_bsdinfo? {
+    private static func terminalDevice(of pid: Int32) -> String? {
         var info = proc_bsdinfo()
         let size = Int32(MemoryLayout<proc_bsdinfo>.size)
-        guard proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, size) == size else { return nil }
-        return info
+        guard
+            proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, size) == size,
+            info.e_tdev != UInt32(bitPattern: -1),
+            let name = devname(dev_t(bitPattern: info.e_tdev), S_IFCHR)
+        else { return nil }
+        return String(cString: name)
     }
 }
