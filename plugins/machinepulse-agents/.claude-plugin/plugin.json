@@ -1,6 +1,6 @@
 {
   "name": "machinepulse-agents",
-  "version": "0.6.1",
+  "version": "0.6.0",
   "description": "Tells MachinePulse when a Claude Code session finishes or needs approval, on any machine it monitors.",
   "author": {
     "name": "David Weiszfeld",
