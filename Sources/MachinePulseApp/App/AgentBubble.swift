@@ -10,9 +10,11 @@ final class AgentBubble {
     private let visibility = AgentBubbleVisibility()
 
     /// `attentions` come oldest first; the oldest leads the card and sets its size.
+    /// `failures` holds, by attention, why its terminal could not be shown.
     func show(
         _ attentions: [AgentAttention],
         machineNames: [String: String],
+        failures: [String: String],
         open: @escaping (AgentAttention) -> Void,
         dismiss: @escaping () -> Void
     ) {
@@ -25,6 +27,7 @@ final class AgentBubble {
                 AgentBubbleView(
                     attentions: attentions,
                     machineNames: machineNames,
+                    failures: failures,
                     visibility: visibility,
                     open: open,
                     dismiss: dismiss
@@ -93,6 +96,7 @@ private struct AgentBubbleView: View {
 
     let attentions: [AgentAttention]
     let machineNames: [String: String]
+    let failures: [String: String]
     let visibility: AgentBubbleVisibility
     let open: (AgentAttention) -> Void
     let dismiss: () -> Void
@@ -152,11 +156,16 @@ private struct AgentBubbleView: View {
                         Text(lead.title)
                             .font(.system(size: 16 * k, weight: .semibold))
                             .lineLimit(1)
-                        Text(status(at: date))
-                            .font(.system(size: 13 * k))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
+                        if let failure = failures[lead.id] {
+                            failureText(failure)
+                                .font(.system(size: 13 * k))
+                        } else {
+                            Text(status(at: date))
+                                .font(.system(size: 13 * k))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
                     }
                     .frame(maxWidth: 300 * k, alignment: .leading)
                 }
@@ -202,9 +211,14 @@ private struct AgentBubbleView: View {
                         open(attention)
                     } label: {
                         detail(attention.symbol, tint: attention.tint) {
-                            Text("\(place(of: attention)) · \(attention.title)")
-                                .lineLimit(1)
-                                .truncationMode(.middle)
+                            VStack(alignment: .leading, spacing: 2 * k) {
+                                Text("\(place(of: attention)) · \(attention.title)")
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                if let failure = failures[attention.id] {
+                                    failureText(failure)
+                                }
+                            }
                         }
                         .contentShape(Rectangle())
                     }
@@ -219,6 +233,15 @@ private struct AgentBubbleView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .font(.system(size: 13 * k))
         .foregroundStyle(.secondary)
+    }
+
+    /// A fixed width, because the card's ideal size measures a wrapping text
+    /// on one line under a maximum width.
+    private func failureText(_ text: String) -> some View {
+        Text(text)
+            .foregroundStyle(.orange)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(width: 300 * Self.peak, alignment: .leading)
     }
 
     private func detail(_ symbol: String, tint: Color? = nil, @ViewBuilder text: () -> some View) -> some View {

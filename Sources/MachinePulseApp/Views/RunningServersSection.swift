@@ -47,7 +47,7 @@ private struct RunningServerCard: View {
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
             VStack(alignment: .leading, spacing: 9) {
-                Text("\(server.processName) · Running for \(runningDuration)")
+                Text("\(model.processName(of: server)) · Running for \(runningDuration)")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

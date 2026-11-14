@@ -19,14 +19,13 @@ struct AgentSessionsSection: View {
             }
             .padding(.horizontal, 2)
 
-            if let message = model.agentFocusMessages[device.id] {
-                Label(message, systemImage: "exclamationmark.triangle.fill")
-                    .warningBox()
-            }
-
             ForEach(sessions) { session in
                 AgentSessionRow(session: session) {
                     Task { await model.focus(session, on: device) }
+                }
+                if let message = model.agentFocusMessages[device.id]?[session.id] {
+                    Label(message, systemImage: "exclamationmark.triangle.fill")
+                        .warningBox()
                 }
             }
         }

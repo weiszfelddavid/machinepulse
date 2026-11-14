@@ -19,7 +19,8 @@ final class AppModel {
     var diskScans: [String: DiskScan] = [:]
     var diskScanActivity: [String: DiskScanActivity] = [:]
     var agentSessions: [String: [AgentSessionMetric]] = [:]
-    var agentFocusMessages: [String: String] = [:]
+    /// Why a session's terminal could not be shown, by machine and session.
+    var agentFocusMessages: [String: [String: String]] = [:]
     var waitingAgents: [AgentAttention] = []
     var preferences: [String: DevicePreference]
     var thresholdSettings: HealthThresholdSettings
@@ -368,9 +369,19 @@ final class AppModel {
     }
 
     func focus(_ session: AgentSessionMetric, on device: MachineDevice) async {
-        waitingAgents.removeAll { $0.deviceID == device.id && $0.session.id == session.id }
+        let failure = await TerminalFocus.focus(session, isLocal: device.isLocal)
+        agentFocusMessages[device.id, default: [:]][session.id] = failure
+        if failure == nil {
+            waitingAgents.removeAll { $0.deviceID == device.id && $0.session.id == session.id }
+        }
         showWaitingAgents()
-        agentFocusMessages[device.id] = await TerminalFocus.focus(session, isLocal: device.isLocal)
+    }
+
+    /// An agent's binary can be named after its version, so a local server
+    /// that a known agent session owns is named after the agent.
+    func processName(of server: RunningServer) -> String {
+        let sessions = devices.first(where: \.isLocal).flatMap { agentSessions[$0.id] } ?? []
+        return sessions.first { $0.pid == server.processID }?.agent.displayName ?? server.processName
     }
 
     private func open(_ attention: AgentAttention) {
@@ -385,6 +396,9 @@ final class AppModel {
 
     private func acceptAgentSessions(_ sessions: [AgentSessionMetric], for id: String) {
         agentSessions[id] = sessions.isEmpty ? nil : sessions
+        agentFocusMessages[id] = agentFocusMessages[id]?.filter { sessionID, _ in
+            sessions.contains { $0.id == sessionID }
+        }
         let fresh = agentAttention.process(deviceID: id, sessions: sessions)
         let kept = AgentAttentionTracker.stillWaiting(waitingAgents.filter { $0.deviceID == id }, sessions: sessions)
         waitingAgents =
@@ -397,9 +411,13 @@ final class AppModel {
             devices.filter { !$0.isLocal }.map { ($0.id, $0.name) },
             uniquingKeysWith: { first, _ in first }
         )
+        let failures = waitingAgents.compactMap { attention in
+            agentFocusMessages[attention.deviceID]?[attention.session.id].map { (attention.id, $0) }
+        }
         agentBubble.show(
             waitingAgents.sorted { $0.session.since < $1.session.since },
             machineNames: machineNames,
+            failures: Dictionary(failures, uniquingKeysWith: { first, _ in first }),
             open: { [weak self] in self?.open($0) },
             dismiss: { [weak self] in self?.dismissWaitingAgents() }
         )
