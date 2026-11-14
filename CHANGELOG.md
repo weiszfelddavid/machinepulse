@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Docs: Codex runs the plugin's hooks only after you trust them at its **Hooks need review** prompt. Without this step, Codex sessions are not listed.
+
 ## 0.6.0 (39)
 
 - Agent sessions: the optional `machinepulse-agents` plugin for Claude Code and Codex records each interactive session on any monitored machine. Workloads lists them. When a task of 30 seconds or more finishes or a session needs approval, a bubble rises from the bottom center of the screen and grows each minute while the agent waits. A click opens the session's Terminal or iTerm2 tab, through the local `ssh` connection for a remote machine. When the tab cannot be found, the bubble stays and says why.

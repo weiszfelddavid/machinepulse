@@ -54,6 +54,8 @@ codex plugin marketplace add weiszfelddavid/machinepulse
 codex plugin add machinepulse-agents@machinepulse
 ```
 
+Codex runs the hooks of a plugin only after you trust them. The next time you start `codex`, it shows **Hooks need review**: choose **Review hooks** or **Trust all and continue**. Until you do, MachinePulse does not see your Codex sessions. Codex asks again when an update changes the hooks.
+
 The plugin is one POSIX `sh` hook. It writes one small file for each interactive session to `~/.local/state/machinepulse/agents/`, and MachinePulse reads it on its usual ten-second pass. The machine must be monitored with **Full metrics**.
 
 - **Workloads** lists each session with its project and state: working, needs approval, finished, or idle.
