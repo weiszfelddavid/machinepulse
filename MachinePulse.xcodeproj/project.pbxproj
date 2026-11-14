@@ -100,6 +100,8 @@
 		F190324F51127A24FC3C1EBF /* DiskGrowthAnalyzerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A08E602793EF099089B0B03F /* DiskGrowthAnalyzerTests.swift */; };
 		F1A39B33B2923EE6FF8B390D /* MetricsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80AE3B7A89A50C3DF01F7991 /* MetricsStoreTests.swift */; };
 		F1AE1E4C7A4DE2B2053DFA9A /* AgentSessionsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2CC1D4EB3C718E3AA0DE140 /* AgentSessionsSection.swift */; };
+		F63BF2503906DBF1A64DBFCE /* HerdrClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 152E17AD6D99F54E61519946 /* HerdrClient.swift */; };
+		F64722E5BA34D8B986961978 /* HerdrClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6FA48591B693CB5AF4A0F25 /* HerdrClientTests.swift */; };
 		F83E471C41EBDB70A534A5F9 /* RemoteWorkloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 864CB9D3320AEBF07F8718BD /* RemoteWorkloadTests.swift */; };
 		FC4DB569422A29B50D0093DD /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3BEBE13B4EAF2B12A8016B9 /* AppModel.swift */; };
 		FF34C81DB437A8B2BFD0DCA6 /* DeviceVitals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 772146AD757BBADBD2E0FFAC /* DeviceVitals.swift */; };
@@ -154,6 +156,7 @@
 		10072B61F8BC009ECD3A5CCD /* SSHMetricSourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHMetricSourceTests.swift; sourceTree = "<group>"; };
 		1164303627D60181D0219C5C /* PopoverPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverPresentation.swift; sourceTree = "<group>"; };
 		1210918DD1A4096C67418488 /* DeviceCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceCard.swift; sourceTree = "<group>"; };
+		152E17AD6D99F54E61519946 /* HerdrClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient.swift; sourceTree = "<group>"; };
 		1687C2C6632F3F3658D75F7E /* FailureClassificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FailureClassificationTests.swift; sourceTree = "<group>"; };
 		17CE7D39DAD8CD462AC09722 /* DiskClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskClassifier.swift; sourceTree = "<group>"; };
 		1FB7963985EA0F2B8512A822 /* DiskTreemap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskTreemap.swift; sourceTree = "<group>"; };
@@ -237,6 +240,7 @@
 		E135C75A02AD874FE21A8E38 /* MachinePulse.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MachinePulse.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E32CC1C7E400363BC1F243E8 /* CommandRunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandRunnerTests.swift; sourceTree = "<group>"; };
 		E56BADDB059237E1F9960594 /* DiskUsageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskUsageTests.swift; sourceTree = "<group>"; };
+		E6FA48591B693CB5AF4A0F25 /* HerdrClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClientTests.swift; sourceTree = "<group>"; };
 		E702EAEDFC54530E656EE150 /* TailscaleDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TailscaleDiscovery.swift; sourceTree = "<group>"; };
 		E9F2A2E36B456DE8D1A3F8DB /* HealthThresholds.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthThresholds.swift; sourceTree = "<group>"; };
 		F95DCEEF1517486B01CE2017 /* Health.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Health.swift; sourceTree = "<group>"; };
@@ -325,6 +329,7 @@
 			children = (
 				FAFEF2D576E63503107E7C7D /* AgentAttentionTracker.swift */,
 				82F3BB8046448B98C4F0B38E /* AgentSessionReader.swift */,
+				152E17AD6D99F54E61519946 /* HerdrClient.swift */,
 			);
 			path = Agents;
 			sourceTree = "<group>";
@@ -343,6 +348,7 @@
 				E56BADDB059237E1F9960594 /* DiskUsageTests.swift */,
 				1687C2C6632F3F3658D75F7E /* FailureClassificationTests.swift */,
 				E033CDBC447D820C0B38C393 /* HealthEvaluatorTests.swift */,
+				E6FA48591B693CB5AF4A0F25 /* HerdrClientTests.swift */,
 				40A1C8D8B2C831CF0795DD7E /* IncidentStabilizerTests.swift */,
 				890031043B611123EAB97B5F /* LocalDisplayControlTests.swift */,
 				4F586AE59630A04CA33041C3 /* LocalMacMetricSourceTests.swift */,
@@ -711,6 +717,7 @@
 				E5BCD253BF99B35C50FA983A /* Health.swift in Sources */,
 				74D91E1C6DC1FB19B44ED507 /* HealthEvaluator.swift in Sources */,
 				8610EF983CF2F3C41A2A8B42 /* HealthThresholds.swift in Sources */,
+				F63BF2503906DBF1A64DBFCE /* HerdrClient.swift in Sources */,
 				CE24EF67445793A56EBAA182 /* IncidentStabilizer.swift in Sources */,
 				22BFE42382F286611F155FCC /* LocalDiskScanner.swift in Sources */,
 				5BA65C23F1FA5EBFE21CA873 /* LocalDisplayControl.swift in Sources */,
@@ -781,6 +788,7 @@
 				462E8C85F07CF3C9184C53A5 /* DiskUsageTests.swift in Sources */,
 				7C00D9777CE8A1E1AF843623 /* FailureClassificationTests.swift in Sources */,
 				7A9763130CA030E70261E473 /* HealthEvaluatorTests.swift in Sources */,
+				F64722E5BA34D8B986961978 /* HerdrClientTests.swift in Sources */,
 				7CE093C0FE45CC3C100F965C /* IncidentStabilizerTests.swift in Sources */,
 				33366537F995CD172D3CE532 /* LocalDisplayControlTests.swift in Sources */,
 				F0B7EFE39494C132B9AFF1D9 /* LocalMacMetricSourceTests.swift in Sources */,

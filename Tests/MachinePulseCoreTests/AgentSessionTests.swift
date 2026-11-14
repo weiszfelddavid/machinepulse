@@ -71,6 +71,24 @@ struct AgentSessionReaderTests {
         #expect(sessions.first { $0.pid == 302 }?.state == .approval)
     }
 
+    @Test func aSessionInHerdrKeepsItsPaneAndSocket() async throws {
+        let directory = try temporaryAgentsDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        var inHerdr = record(agent: "claude", pid: 401, state: "working", since: 1_000)
+        inHerdr["herdrPane"] = "w1:p3"
+        inHerdr["herdrSocket"] = "/home/example/.config/herdr/herdr.sock"
+        inHerdr["terminal"] = "herdr"
+        try write(inHerdr, to: directory)
+        try write(record(agent: "claude", pid: 402, state: "working", since: 2_000), to: directory)
+
+        let sessions = await AgentSessionReader.read(directory: directory, processNames: named("claude"))
+        let herdr = try #require(sessions.first { $0.pid == 401 })
+        #expect(herdr.herdrPane == "w1:p3")
+        #expect(herdr.herdrSocket == "/home/example/.config/herdr/herdr.sock")
+        #expect(herdr.runsInHerdr)
+        #expect(sessions.first { $0.pid == 402 }?.runsInHerdr == false)
+    }
+
     @Test func aMissingDirectoryMeansNoSessions() async {
         let missing = FileManager.default.temporaryDirectory.appendingPathComponent("MachinePulseMissing-\(UUID())")
         #expect(await AgentSessionReader.read(directory: missing).isEmpty)
@@ -208,7 +226,7 @@ func record(
         "version": 1, "agent": agent, "pid": pid, "process": process ?? agent, "state": state, "since": since,
         "turnStartedAt": turnStartedAt, "cwd": "/home/example/code/project-\(pid)",
         "transcript": "", "tty": "pts/\(pid % 10)", "terminal": "", "terminalSession": "",
-        "tmuxPane": "", "sshPort": NSNull(),
+        "tmuxPane": "", "sshPort": NSNull(), "herdrPane": "", "herdrSocket": "",
     ]
 }
 

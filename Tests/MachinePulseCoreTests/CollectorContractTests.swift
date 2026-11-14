@@ -777,6 +777,8 @@ struct CollectorContractTests {
             )
             records[index]["transcript"] = transcript.path
         }
+        records[0]["herdrPane"] = "w1:p3"
+        records[0]["herdrSocket"] = "/home/example/.config/herdr/herdr.sock"
         var future = record(agent: "claude", pid: 101, state: "working", since: 9_000)
         future["version"] = 2
         for (name, value) in records.map({ ("\($0["agent"]!)-\($0["pid"]!).json", $0) })
@@ -801,6 +803,7 @@ struct CollectorContractTests {
         #expect(output.sessions.first { $0.pid == 302 }?.state == .approval)
         #expect(output.sessions.first { $0.pid == 102 }?.finishedTurnDuration == 100)
         #expect(output.sessions.first?.terminal == nil)
+        #expect(output.sessions.first { $0.pid == 101 }?.herdrPane == "w1:p3")
         #expect(output.sessions == swiftSessions)
     }
 

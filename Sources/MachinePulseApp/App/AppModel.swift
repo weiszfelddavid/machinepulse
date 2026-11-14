@@ -369,7 +369,14 @@ final class AppModel {
     }
 
     func focus(_ session: AgentSessionMetric, on device: MachineDevice) async {
-        let failure = await TerminalFocus.focus(session, isLocal: device.isLocal)
+        let dnsName = device.dnsName.map { $0.hasSuffix(".") ? String($0.dropLast()) : $0 }
+        let names = [preferences[device.id]?.sshTarget, dnsName, dnsName?.components(separatedBy: ".").first]
+        let machine = TerminalFocus.Machine(
+            isLocal: device.isLocal,
+            names: names.compactMap { $0?.isEmpty == false ? $0 : nil },
+            addresses: device.addresses
+        )
+        let failure = await TerminalFocus.focus(session, on: machine)
         agentFocusMessages[device.id, default: [:]][session.id] = failure
         if failure == nil {
             waitingAgents.removeAll { $0.deviceID == device.id && $0.session.id == session.id }

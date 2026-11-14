@@ -60,7 +60,7 @@ Limits are information until the workload shows a harmful result: two or more ne
 
 ### Agent sessions
 
-On a full-metrics machine with the `machinepulse-agents` plugin, **Agents** comes first in Workloads. Each row shows the project folder, the agent, and the state: **Working for 12m**, **Needs approval** in orange, **Finished 2 minutes ago after 6m**, or **Idle**. A click opens the session's terminal; when MachinePulse cannot find it, one line says why. A machine without the Workloads section, such as another Mac, shows it while it has sessions.
+On a full-metrics machine with the `machinepulse-agents` plugin, **Agents** comes first in Workloads. Each row shows the project folder, the agent, and the state: **Working for 12m**, **Needs approval** in orange, **Finished 2 minutes ago after 6m**, or **Idle**. A click opens the session's terminal, or its herdr pane on this Mac. When MachinePulse cannot find it, one line says why. A machine without the Workloads section, such as another Mac, shows it while it has sessions.
 
 A bubble rises from the bottom center of each display, also over full-screen apps, for each finished turn of 30 seconds or more and for each approval request. Shorter turns are a conversation at the keyboard. Sessions that finished before MachinePulse first saw the machine are not announced. It is not a macOS notification. It rises from the bottom so that the top center stays free for other apps' cards.
 

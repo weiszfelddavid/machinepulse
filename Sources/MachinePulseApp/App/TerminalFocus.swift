@@ -5,20 +5,43 @@ import MachinePulseCore
 /// Brings the terminal of an agent session to the front. A session on this
 /// Mac is found through its own process; a session on another machine is
 /// found through the local `ssh` client whose source port the session saw.
+/// A session in herdr is shown in its herdr window.
 @MainActor
 enum TerminalFocus {
+    /// What identifies a monitored machine on this Mac.
+    struct Machine {
+        let isLocal: Bool
+        /// The SSH target, host names, and addresses, for a machine other than this Mac.
+        let names: [String]
+        let addresses: [String]
+    }
+
     /// Returns a short reason when the terminal could not be shown.
-    static func focus(_ session: AgentSessionMetric, isLocal: Bool) async -> String? {
+    static func focus(_ session: AgentSessionMetric, on machine: Machine) async -> String? {
         let pid: Int32
         let tty: String?
-        if isLocal {
+        if session.runsInHerdr {
+            if machine.isLocal, let pane = session.herdrPane {
+                await focusHerdrPane(pane, socket: session.herdrSocket)
+            }
+            if !machine.isLocal, let client = await sshClient(of: session, on: machine) {
+                pid = client
+                tty = terminalDevice(of: client)
+            } else if let window = await herdrWindow(for: machine) {
+                pid = window.pid
+                tty = window.tty
+            } else {
+                return machine.isLocal
+                    ? "No herdr window is open on this Mac." : "No terminal on this Mac shows this herdr session."
+            }
+        } else if machine.isLocal {
             pid = session.pid
             tty = session.tty
         } else {
-            guard let port = session.sshPort else {
+            guard session.sshPort != nil else {
                 return "This session does not run in an SSH connection from this Mac."
             }
-            guard let client = await sshClient(sourcePort: port) else {
+            guard let client = await sshClient(of: session, on: machine) else {
                 return "No SSH connection from this Mac matches this session."
             }
             pid = client
@@ -97,17 +120,61 @@ enum TerminalFocus {
         }
     }
 
-    private static func sshClient(sourcePort: Int) async -> Int32? {
+    /// The interactive `ssh` client from the session's source port. When that
+    /// connection is gone, as after a reattach to tmux or herdr, the one
+    /// interactive client to the machine. A client without a terminal, such
+    /// as a ControlMaster, shows nothing.
+    private static func sshClient(of session: AgentSessionMetric, on machine: Machine) async -> Int32? {
+        guard let port = session.sshPort else { return nil }
+        if let client = await interactiveSSHClients(connectedTo: ":\(port)").first { return client }
+        var clients: Set<Int32> = []
+        for address in machine.addresses {
+            clients.formUnion(await interactiveSSHClients(connectedTo: "@\(address)"))
+        }
+        return clients.count == 1 ? clients.first : nil
+    }
+
+    private static func interactiveSSHClients(connectedTo endpoint: String) async -> [Int32] {
         guard
             let result = try? await CommandRunner.run(
                 executable: "/usr/sbin/lsof",
-                arguments: ["-nP", "-a", "-c", "ssh", "-iTCP:\(sourcePort)", "-sTCP:ESTABLISHED", "-Fp"],
+                arguments: ["-nP", "-a", "-c", "ssh", "-iTCP\(endpoint)", "-sTCP:ESTABLISHED", "-Fp"],
+                timeout: 5
+            )
+        else { return [] }
+        return result.outputString.split(whereSeparator: \.isNewline)
+            .compactMap { $0.hasPrefix("p") ? Int32($0.dropFirst()) : nil }
+            .filter { terminalDevice(of: $0) != nil }
+    }
+
+    private static func herdrWindow(for machine: Machine) async -> HerdrClient? {
+        guard
+            let result = try? await CommandRunner.run(
+                executable: "/bin/ps",
+                arguments: ["-A", "-o", "pid=", "-o", "tty=", "-o", "args="],
                 timeout: 5
             )
         else { return nil }
-        return result.outputString.split(whereSeparator: \.isNewline)
-            .first { $0.hasPrefix("p") }
-            .flatMap { Int32($0.dropFirst()) }
+        return HerdrClient.window(
+            for: machine.isLocal ? nil : machine.names + machine.addresses,
+            among: HerdrClient.clients(inProcessList: result.outputString)
+        )
+    }
+
+    /// Asks the session's herdr server to show the pane. A failure leaves the
+    /// window to come to the front as it is.
+    private static func focusHerdrPane(_ pane: String, socket: String?) async {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        guard
+            let herdr = ["\(home)/.local/bin/herdr", "/opt/homebrew/bin/herdr", "/usr/local/bin/herdr"]
+                .first(where: FileManager.default.isExecutableFile(atPath:))
+        else { return }
+        _ = try? await CommandRunner.run(
+            executable: herdr,
+            arguments: ["agent", "focus", pane],
+            environment: socket.map { ["HERDR_SOCKET_PATH": $0] },
+            timeout: 5
+        )
     }
 
     /// The first ancestor that is a regular app: the terminal that hosts the

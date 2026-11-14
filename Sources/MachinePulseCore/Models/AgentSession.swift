@@ -33,6 +33,8 @@ public struct AgentSessionMetric: Codable, Hashable, Sendable, Identifiable {
     public let terminalSession: String?
     public let tmuxPane: String?
     public let sshPort: Int?
+    public let herdrPane: String?
+    public let herdrSocket: String?
 
     public var id: String { "\(agent.rawValue)-\(pid)" }
 
@@ -41,6 +43,8 @@ public struct AgentSessionMetric: Codable, Hashable, Sendable, Identifiable {
         let name = (cwd as NSString).lastPathComponent
         return name.isEmpty || name == "/" ? cwd : name
     }
+
+    public var runsInHerdr: Bool { herdrPane != nil || terminal == "herdr" }
 
     /// The length of the turn that ended when the session started to wait.
     public var finishedTurnDuration: TimeInterval? {
@@ -59,7 +63,9 @@ public struct AgentSessionMetric: Codable, Hashable, Sendable, Identifiable {
         terminal: String? = nil,
         terminalSession: String? = nil,
         tmuxPane: String? = nil,
-        sshPort: Int? = nil
+        sshPort: Int? = nil,
+        herdrPane: String? = nil,
+        herdrSocket: String? = nil
     ) {
         self.agent = agent
         self.pid = pid
@@ -72,6 +78,8 @@ public struct AgentSessionMetric: Codable, Hashable, Sendable, Identifiable {
         self.terminalSession = terminalSession
         self.tmuxPane = tmuxPane
         self.sshPort = sshPort
+        self.herdrPane = herdrPane
+        self.herdrSocket = herdrSocket
     }
 }
 

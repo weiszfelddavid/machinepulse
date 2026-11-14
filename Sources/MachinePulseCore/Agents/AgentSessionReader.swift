@@ -79,7 +79,9 @@ public enum AgentSessionReader {
             terminal: text(record.terminal, maximum: 64),
             terminalSession: text(record.terminalSession, maximum: 128),
             tmuxPane: text(record.tmuxPane, maximum: 32),
-            sshPort: record.sshPort.flatMap { (1...65_535).contains($0) ? $0 : nil }
+            sshPort: record.sshPort.flatMap { (1...65_535).contains($0) ? $0 : nil },
+            herdrPane: text(record.herdrPane, maximum: 32),
+            herdrSocket: text(record.herdrSocket, maximum: 1_024)
         )
     }
 
@@ -132,10 +134,12 @@ struct AgentStateRecord: Decodable {
     var terminalSession: String?
     var tmuxPane: String?
     var sshPort: Int?
+    var herdrPane: String?
+    var herdrSocket: String?
 
     private enum CodingKeys: String, CodingKey {
         case version, agent, pid, process, state, since, turnStartedAt, cwd, transcript, tty, terminal, terminalSession,
-            tmuxPane, sshPort
+            tmuxPane, sshPort, herdrPane, herdrSocket
     }
 
     init(from decoder: any Decoder) throws {
@@ -154,5 +158,7 @@ struct AgentStateRecord: Decodable {
         terminalSession = try? container.decode(String.self, forKey: .terminalSession)
         tmuxPane = try? container.decode(String.self, forKey: .tmuxPane)
         sshPort = try? container.decode(Int.self, forKey: .sshPort)
+        herdrPane = try? container.decode(String.self, forKey: .herdrPane)
+        herdrSocket = try? container.decode(String.self, forKey: .herdrSocket)
     }
 }
