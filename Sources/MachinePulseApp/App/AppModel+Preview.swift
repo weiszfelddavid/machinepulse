@@ -420,10 +420,7 @@
             }
             lastRefresh = now
             if scenario == .agents {
-                let sessions = Self.previewAgentSessions(now: now)
-                agentSessions[device.id] = sessions
-                waitingAgents = sessions.compactMap { AgentAttention(deviceID: device.id, session: $0) }
-                showWaitingAgents()
+                agentSessions[device.id] = Self.previewAgentSessions(now: now)
             }
 
             if scenario == .loading { return }

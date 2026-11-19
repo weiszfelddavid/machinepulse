@@ -49,7 +49,7 @@ MACHINEPULSE_CONFIGURATION=debug ./scripts/build-app.sh
 MACHINEPULSE_PREVIEW_SCENARIO=warning MACHINEPULSE_PREVIEW_SECTION=storage ./dist/MachinePulse.app/Contents/MacOS/MachinePulse
 ```
 
-Scenarios: `empty`, `loading`, `healthy`, `warning`, `critical`, `clearing`, `recovered`, `unreachable`, `collection-unavailable`, `collection-failed`, `collection-recovered`, `oom`, `disk-growth`, `expected-unit`, `servers`, `agents`. Every scenario carries a storage scan modelled on a busy development home; Linux scenarios carry workload and cgroup rows; `servers` renders two invented local project rows; `agents` renders one agent session in each state on the Linux card (open Workloads) and shows the waiting-agent bubble at the bottom of each display. Use the system Appearance setting for a real light and dark pass; the appearance variable is only a hint.
+Scenarios: `empty`, `loading`, `healthy`, `warning`, `critical`, `clearing`, `recovered`, `unreachable`, `collection-unavailable`, `collection-failed`, `collection-recovered`, `oom`, `disk-growth`, `expected-unit`, `servers`, `agents`. Every scenario carries a storage scan modelled on a busy development home; Linux scenarios carry workload and cgroup rows; `servers` renders two invented local project rows; `agents` renders one agent session in each state on the Linux card (open Workloads). Use the system Appearance setting for a real light and dark pass; the appearance variable is only a hint.
 
 `swift run MachinePulseXDRFixture` opens a window that alternates static and changing content (Space toggles, Esc quits) for soaking the overlay with a fixed boost level set in the installed app. Never automate power, lid, login, or thermal transitions.
 
