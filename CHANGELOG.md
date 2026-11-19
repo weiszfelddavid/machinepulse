@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.8.0 (41)
 
 - Agent sessions: a macOS notification replaces the bubble at the bottom of the screen. MachinePulse removes it as soon as you answer the session, the agent works again, or the session ends, and at the next launch. A click opens the session's terminal. An approval request is announced only after 15 seconds, so an answer at the keyboard sends nothing.
 - The app has an icon.
