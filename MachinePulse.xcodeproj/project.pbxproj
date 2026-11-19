@@ -99,6 +99,7 @@
 		F190324F51127A24FC3C1EBF /* DiskGrowthAnalyzerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A08E602793EF099089B0B03F /* DiskGrowthAnalyzerTests.swift */; };
 		F1A39B33B2923EE6FF8B390D /* MetricsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80AE3B7A89A50C3DF01F7991 /* MetricsStoreTests.swift */; };
 		F1AE1E4C7A4DE2B2053DFA9A /* AgentSessionsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2CC1D4EB3C718E3AA0DE140 /* AgentSessionsSection.swift */; };
+		F20424F8D8BBC46B42259222 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = FCEE422E61905114CDDBB7A9 /* AppIcon.icns */; };
 		F63BF2503906DBF1A64DBFCE /* HerdrClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 152E17AD6D99F54E61519946 /* HerdrClient.swift */; };
 		F64722E5BA34D8B986961978 /* HerdrClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6FA48591B693CB5AF4A0F25 /* HerdrClientTests.swift */; };
 		F83E471C41EBDB70A534A5F9 /* RemoteWorkloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 864CB9D3320AEBF07F8718BD /* RemoteWorkloadTests.swift */; };
@@ -244,6 +245,7 @@
 		F95DCEEF1517486B01CE2017 /* Health.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Health.swift; sourceTree = "<group>"; };
 		FAFEF2D576E63503107E7C7D /* AgentAttentionTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentAttentionTracker.swift; sourceTree = "<group>"; };
 		FCDED85B8246EB678C74B759 /* CapacityHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapacityHistoryTests.swift; sourceTree = "<group>"; };
+		FCEE422E61905114CDDBB7A9 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -368,6 +370,7 @@
 		70F021466D186DB36E9A1F71 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				FCEE422E61905114CDDBB7A9 /* AppIcon.icns */,
 				44A8F08495414AC47020E705 /* collector.sh */,
 			);
 			path = Resources;
@@ -685,6 +688,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F20424F8D8BBC46B42259222 /* AppIcon.icns in Resources */,
 				59F75E34C7D6AE2BA834E233 /* collector.sh in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
