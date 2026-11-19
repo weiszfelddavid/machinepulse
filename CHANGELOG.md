@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Agent sessions: a macOS notification replaces the bubble at the bottom of the screen. MachinePulse removes it as soon as you answer the session, the agent works again, or the session ends, and at the next launch. A click opens the session's terminal. An approval request is announced only after 15 seconds, so an answer at the keyboard sends nothing.
+- The app has an icon.
+
 ## 0.7.0 (40)
 
 - Plugin 0.7.0: the hook changed, so Codex asks you to trust its hooks again. Claude Code needs no step.
