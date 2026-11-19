@@ -70,8 +70,8 @@ Codex runs the hooks of a plugin only after you trust them. The next time that y
 The plugin is one POSIX `sh` hook. It writes one small file for each interactive session to `~/.local/state/machinepulse/agents/`. MachinePulse reads these files every ten seconds. It must monitor the machine with **Full metrics**.
 
 - **Workloads** lists each session with its project and its state: working, needs approval, finished, or idle.
-- A bubble rises from the bottom center of each display when a task of 30 seconds or more finishes. It also rises when a session needs approval. Its colors are the opposite of the system appearance. It grows one step each minute for ten minutes while the agent waits. It stays until you open the session, press ×, or the agent works again. Hover over it to see the folder, the task length, and the other sessions that wait. You can turn it off in Settings.
-- A click on the bubble or on the row opens the terminal of the session:
+- A macOS notification tells you when a task of 30 seconds or more finishes, or when a session still needs approval after 15 seconds. It shows the agent and the project, and the machine if it is not this Mac. It goes away when you answer the session, when the agent works again, or when the session ends. You can turn it off in Settings. macOS shows it only if MachinePulse may send notifications (System Settings → Notifications) and no Focus is on.
+- A click on the notification or on the row opens the terminal of the session:
   - On this Mac, MachinePulse selects the Terminal or iTerm2 tab of the session. It brings any other terminal app to the front.
   - On another machine, MachinePulse finds the `ssh` connection from this Mac that the session runs in, and selects its tab. If that connection is gone, for example after a reattach to tmux, MachinePulse uses the only `ssh` tab to that machine.
   - In [herdr](https://herdr.dev) on this Mac, MachinePulse shows the pane of the session and brings the herdr window to the front.
@@ -81,7 +81,8 @@ The plugin is one POSIX `sh` hook. It writes one small file for each interactive
 Limits:
 
 - A session without a terminal, such as `claude -p` or `codex exec`, is not listed.
-- If the original connection is gone and several `ssh` tabs go to the machine, MachinePulse cannot know the tab. The bubble tells you why.
+- If the original connection is gone and several `ssh` tabs go to the machine, MachinePulse cannot know the tab. The notification and the row tell you why.
+- A Claude Code session that runs in the background has no terminal window, so MachinePulse cannot open it.
 - With OpenSSH `ControlMaster`, all sessions to one host share one connection. MachinePulse can only find the tab that opened that connection.
 - Termius and other apps with their own SSH client start no `ssh` process, so MachinePulse cannot find their tab.
 

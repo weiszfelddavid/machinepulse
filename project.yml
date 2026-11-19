@@ -46,6 +46,7 @@ targets:
         CFBundleName: MachinePulse
         CFBundleShortVersionString: 0.7.0
         CFBundleVersion: "40"
+        CFBundleIconFile: AppIcon
         LSUIElement: true
         NSAppleEventsUsageDescription: MachinePulse selects the terminal tab of the agent session you open.
         NSHumanReadableCopyright: Copyright © 2026 David Weiszfeld

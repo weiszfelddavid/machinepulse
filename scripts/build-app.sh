@@ -16,7 +16,8 @@ STAGED_APP="$STAGING_DIRECTORY/MachinePulse.app"
 mkdir -p "$STAGED_APP/Contents/MacOS" "$STAGED_APP/Contents/Resources"
 cp "$BIN_DIRECTORY/MachinePulseApp" "$STAGED_APP/Contents/MacOS/MachinePulse"
 cp "$PROJECT_DIRECTORY/Sources/MachinePulseApp/Resources/collector.sh" \
-    "$STAGED_APP/Contents/Resources/collector.sh"
+    "$PROJECT_DIRECTORY/Sources/MachinePulseApp/Resources/AppIcon.icns" \
+    "$STAGED_APP/Contents/Resources/"
 cp "$PROJECT_DIRECTORY/Config/MachinePulse-Info.plist" "$STAGED_APP/Contents/Info.plist"
 
 plutil -replace CFBundleExecutable -string MachinePulse "$STAGED_APP/Contents/Info.plist"

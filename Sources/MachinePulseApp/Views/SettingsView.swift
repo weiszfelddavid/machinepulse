@@ -48,7 +48,7 @@ struct SettingsView: View {
                         set: { model.setNotificationsEnabled($0) }
                     ))
                 Toggle(
-                    "Show a bubble when an agent finishes or needs approval",
+                    "Notify me when an agent finishes or needs approval",
                     isOn: Binding(
                         get: { model.agentNotificationsEnabled },
                         set: { model.setAgentNotificationsEnabled($0) }
@@ -58,7 +58,7 @@ struct SettingsView: View {
             }
             Section("Agents") {
                 Text(
-                    "Install the machinepulse-agents plugin on each machine where Claude Code or Codex runs. Its sessions then show in Workloads, and a bubble at the bottom of the screen opens the terminal of a session that waits for you."
+                    "Install the machinepulse-agents plugin on each machine where Claude Code or Codex runs. Its sessions then show in Workloads. When a session waits for you, a notification opens its terminal, and it goes away once you answer."
                 )
                 .foregroundStyle(.secondary)
                 LabeledContent("Claude Code") {

@@ -38,7 +38,6 @@ final class AppModel {
     @ObservationIgnored private let localServerDiscovery = LocalServerDiscovery()
     @ObservationIgnored private let notifications = NotificationCoordinator()
     @ObservationIgnored private var agentAttention = AgentAttentionTracker()
-    @ObservationIgnored private let agentBubble = AgentBubble()
     @ObservationIgnored private let store: MetricsStore?
     @ObservationIgnored private let collectorScript: Data?
     @ObservationIgnored private var sources: [String: any MetricSource] = [:]
@@ -173,7 +172,8 @@ final class AppModel {
         guard refreshLoop == nil else { return }
         localDisplayControls.start()
         launchesAtLogin = SMAppService.mainApp.status == .enabled
-        if notificationsEnabled {
+        notifications.start { [weak self] in self?.openAgentNotification($0) }
+        if notificationsEnabled || agentNotificationsEnabled {
             Task { await notifications.requestPermission() }
         }
         refreshLoop = Task { [weak self] in
@@ -361,14 +361,20 @@ final class AppModel {
     func setAgentNotificationsEnabled(_ enabled: Bool) {
         agentNotificationsEnabled = enabled
         UserDefaults.standard.set(enabled, forKey: Self.agentNotificationsKey)
-        if !enabled { dismissWaitingAgents() }
+        if enabled {
+            Task { await notifications.requestPermission() }
+        } else {
+            waitingAgents = []
+            showWaitingAgents()
+        }
     }
 
     func supportsAgentSessions(_ device: MachineDevice) -> Bool {
         !(agentSessions[device.id] ?? []).isEmpty
     }
 
-    func focus(_ session: AgentSessionMetric, on device: MachineDevice) async {
+    @discardableResult
+    func focus(_ session: AgentSessionMetric, on device: MachineDevice) async -> String? {
         let dnsName = device.dnsName.map { $0.hasSuffix(".") ? String($0.dropLast()) : $0 }
         let names = [preferences[device.id]?.sshTarget, dnsName, dnsName?.components(separatedBy: ".").first]
         let machine = TerminalFocus.Machine(
@@ -380,8 +386,9 @@ final class AppModel {
         agentFocusMessages[device.id, default: [:]][session.id] = failure
         if failure == nil {
             waitingAgents.removeAll { $0.deviceID == device.id && $0.session.id == session.id }
+            showWaitingAgents()
         }
-        showWaitingAgents()
+        return failure
     }
 
     /// An agent's binary can be named after its version, so a local server
@@ -391,14 +398,15 @@ final class AppModel {
         return sessions.first { $0.pid == server.processID }?.agent.displayName ?? server.processName
     }
 
-    private func open(_ attention: AgentAttention) {
-        guard let device = devices.first(where: { $0.id == attention.deviceID }) else { return }
-        Task { await focus(attention.session, on: device) }
-    }
-
-    private func dismissWaitingAgents() {
-        waitingAgents = []
-        showWaitingAgents()
+    private func openAgentNotification(_ id: String) {
+        guard
+            let attention = waitingAgents.first(where: { $0.id == id }),
+            let device = devices.first(where: { $0.id == attention.deviceID })
+        else { return }
+        Task {
+            guard let failure = await focus(attention.session, on: device) else { return }
+            notifications.showAgentFailure(failure, for: attention, machineName: remoteMachineNames[device.id])
+        }
     }
 
     private func acceptAgentSessions(_ sessions: [AgentSessionMetric], for id: String) {
@@ -413,21 +421,12 @@ final class AppModel {
         showWaitingAgents()
     }
 
-    func showWaitingAgents() {
-        let machineNames = Dictionary(
-            devices.filter { !$0.isLocal }.map { ($0.id, $0.name) },
-            uniquingKeysWith: { first, _ in first }
-        )
-        let failures = waitingAgents.compactMap { attention in
-            agentFocusMessages[attention.deviceID]?[attention.session.id].map { (attention.id, $0) }
-        }
-        agentBubble.show(
-            waitingAgents.sorted { $0.session.since < $1.session.since },
-            machineNames: machineNames,
-            failures: Dictionary(failures, uniquingKeysWith: { first, _ in first }),
-            open: { [weak self] in self?.open($0) },
-            dismiss: { [weak self] in self?.dismissWaitingAgents() }
-        )
+    private func showWaitingAgents() {
+        notifications.showAgents(waitingAgents, machineNames: remoteMachineNames)
+    }
+
+    private var remoteMachineNames: [String: String] {
+        Dictionary(devices.filter { !$0.isLocal }.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
     }
 
     private func forgetAgentSessions(for id: String) {
@@ -455,6 +454,7 @@ final class AppModel {
 
     func prepareToQuit() {
         localDisplayControls.shutdown()
+        notifications.removeAllAgents()
     }
 
     func supportsDeepMonitoring(_ device: MachineDevice) -> Bool {

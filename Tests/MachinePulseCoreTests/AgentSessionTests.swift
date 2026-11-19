@@ -193,14 +193,20 @@ struct AgentAttentionTrackerTests {
         #expect(AgentAttentionTracker.stillWaiting(waiting, sessions: []).isEmpty)
     }
 
-    @Test func theBubbleGrowsOneStepAMinuteForTenMinutes() {
-        #expect(AgentAttention.bubbleScale(waitingFor: 0) == 1)
-        #expect(AgentAttention.bubbleScale(waitingFor: 59) == 1)
-        #expect(AgentAttention.bubbleScale(waitingFor: 60) == 1.1)
-        #expect(abs(AgentAttention.bubbleScale(waitingFor: 5 * 60 + 30) - 1.5) < 1e-9)
-        #expect(AgentAttention.bubbleScale(waitingFor: 10 * 60) == 2)
-        #expect(AgentAttention.bubbleScale(waitingFor: 3 * 60 * 60) == 2)
-        #expect(AgentAttention.bubbleScale(waitingFor: -30) == 1)
+    @Test func anApprovalAnsweredWithinItsGraceIsNeverAnnounced() {
+        var tracker = AgentAttentionTracker()
+        _ = tracker.process(deviceID: "mac", sessions: [], now: Date(timeIntervalSince1970: 1_000))
+
+        let blocked = session(pid: 7, state: .approval, since: 1_000, turnStartedAt: 900)
+        #expect(tracker.process(deviceID: "mac", sessions: [blocked], now: Date(timeIntervalSince1970: 1_014)).isEmpty)
+
+        let answered = session(pid: 7, state: .working, since: 1_000, turnStartedAt: 900)
+        #expect(tracker.process(deviceID: "mac", sessions: [answered], now: Date(timeIntervalSince1970: 1_020)).isEmpty)
+
+        let blockedAgain = session(pid: 7, state: .approval, since: 1_100, turnStartedAt: 900)
+        #expect(
+            tracker.process(deviceID: "mac", sessions: [blockedAgain], now: Date(timeIntervalSince1970: 1_115))
+                .map(\.kind) == [.needsApproval])
     }
 
     private func session(
